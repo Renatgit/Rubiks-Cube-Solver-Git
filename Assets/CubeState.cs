@@ -14,6 +14,7 @@ public class CubeState : MonoBehaviour
     public List<GameObject> up = new List<GameObject>();
     public List<GameObject> down = new List<GameObject>();
 
+    public static bool start = false;
 
     // Start is called before the first frame update
     void Start()
@@ -26,7 +27,6 @@ public class CubeState : MonoBehaviour
     {
         
     }
-
     public void ParentSidePiecesToCenter(List<GameObject> cubeSide)
     {
         foreach (GameObject piece in cubeSide)
@@ -34,13 +34,21 @@ public class CubeState : MonoBehaviour
             //attach the parent of each piece
             //to the parent of the 4th piece(the center piece)
             //unless it is the center piece already
-            if(piece != cubeSide[4])
+            if (piece != cubeSide[4])
             {
                 piece.transform.parent.transform.parent = cubeSide[4].transform.parent;
             }
-            //start the logic rotation 
-            cubeSide[4].transform.parent.GetComponent<PivotRotation>().Rotate(cubeSide);
         }
     }
 
+    public void UngroupSide(List<GameObject> cubeSide, Transform cubeIsParent)
+    {
+        foreach(GameObject piece in cubeSide)
+        {
+            if (piece != cubeSide[4])
+            {
+                piece.transform.parent.transform.parent = cubeIsParent;
+            }
+        }
+    }
 }

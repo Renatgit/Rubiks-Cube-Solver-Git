@@ -18,20 +18,24 @@ public class SelectFace : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(0)) //if left mouse button is clicked
+        if (!AutomaticMovement.isAnimating)
         {
-            //read the current state of the cube
-            readCube.ReadState();
-
-            //raycast from the mouse pointer towards the cube to detect if a face is hit
-            RaycastHit hit;
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out hit, 100.0f, layerMask))
+            if (Input.GetMouseButtonDown(0)) //if left mouse button is clicked
             {
-                GameObject face = hit.collider.gameObject;
+                int indexOfPieceHit = -1;
 
-                //make a lsit of all the sides
-                List<List<GameObject>> cubeSides = new List<List<GameObject>>()
+                //read the current state of the cube
+                readCube.ReadState();
+
+                //raycast from the mouse pointer towards the cube to detect if a face is hit
+                RaycastHit hit;
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                if (Physics.Raycast(ray, out hit, 100.0f, layerMask))
+                {
+                    GameObject face = hit.collider.gameObject;
+
+                    //make a lsit of all the sides
+                    List<List<GameObject>> cubeSides = new List<List<GameObject>>()
                 {
                     cubeState.up,
                     cubeState.down,
@@ -41,13 +45,18 @@ public class SelectFace : MonoBehaviour
                     cubeState.back
                 };
 
-                //If the face hit exists within a side
-                foreach (List<GameObject> cubeSide in cubeSides)
-                {
-                    if (cubeSide.Contains(face))
+                    //If the face hit exists within a side
+                    foreach (List<GameObject> cubeSide in cubeSides)
                     {
-                        //make the pieces in the side children of the central piece
-                        cubeState.ParentSidePiecesToCenter(cubeSide);
+                        if (cubeSide.Contains(face))
+                        {
+                            indexOfPieceHit = cubeSide.IndexOf(face);
+                            //make the pieces in the side children of the central piece
+                            cubeState.ParentSidePiecesToCenter(cubeSide);
+
+                            //start the rotation logic
+                            cubeSide[4].transform.parent.GetComponent<PivotRotation>().Rotate(cubeSide, indexOfPieceHit);
+                        }
                     }
                 }
             }
