@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using RubiksCubeSim;
 
 public class WholeCubeRotation : MonoBehaviour
 {
@@ -25,9 +26,12 @@ public class WholeCubeRotation : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Swipe();
-        Drag();
-        Arrows();
+        if (!AutomaticMovement.isAnimating)
+        {
+            Swipe();
+            Drag();
+            Arrows();
+        }
     }
 
     void Drag()

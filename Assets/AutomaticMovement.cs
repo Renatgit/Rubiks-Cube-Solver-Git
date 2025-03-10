@@ -1,14 +1,22 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using UnityEngine.EventSystems;
+using RubiksCubeSim;
 
 public class AutomaticMovement : MonoBehaviour
 {
     private CubeState cubeState;
     private ReadCube readCube;
+    private TMP_InputField inputField;
+    private TMP_Text tmpSeq;
+    private TMP_Text tmpShuffleText;
 
     public static bool automaticMovementIsActive = false;
     public static bool isAnimating = false;
+
     public static List<string> currentMovesList = new List<string>() {};
     private static readonly List<string> allMovesList = new List<string>()
     {
@@ -17,11 +25,29 @@ public class AutomaticMovement : MonoBehaviour
         "U2", "D2", "F2", "B2", "L2", "R2"
     };
 
+    private static Dictionary<string, string> oppositeSides = new Dictionary<string, string>()
+    {
+        {"U", "D"},
+        {"D", "U"},
+        {"L", "R"},
+        {"R", "L"},
+        {"F", "B"},
+        {"B", "F"},
+    };
+
     // Start is called before the first frame update
     void Start()
     {
         cubeState = FindObjectOfType<CubeState>();
         readCube = FindObjectOfType<ReadCube>();
+
+        inputField = FindObjectOfType<TMP_InputField>();
+        tmpSeq = GameObject.Find("ShuffleSolveSequence").GetComponent<TMP_Text>();
+        tmpShuffleText = GameObject.Find("ShuffleDisplay").GetComponent<TMP_Text>();
+
+        Color tempColor = tmpShuffleText.color;
+        tempColor.a = 0;  // Fully Transparent
+        tmpShuffleText.color = tempColor;
     }
 
     // Update is called once per frame
@@ -45,6 +71,94 @@ public class AutomaticMovement : MonoBehaviour
             isAnimating = false;
         }
     }
+
+    //Shuffle() method is called when the user presses the button
+    public void Shuffle()
+    {
+        tmpSeq.text = "";
+        int numOfMoves = Random.Range(20, 35);
+        List<string> createdListOfMoves = new List<string>();
+
+        createdListOfMoves = GenerateShuffleSeq(numOfMoves);
+        currentMovesList = createdListOfMoves;
+
+        Color tempColor = tmpShuffleText.color;
+        tempColor.a = 1;  // Not Transparent
+        tmpShuffleText.color = tempColor;
+        DisplaySequence(createdListOfMoves);
+    }
+
+    //Function that returns a list of moves that represent shuffle sequence
+    List<string> GenerateShuffleSeq(int seqLength)
+    {
+        List<string> possibleMoves = allMovesList;
+        List<string> sequence = new List<string>();
+
+        MoveNode currentNode = null;
+
+        //for loop that creates the actual sequence
+        //using a tree structure
+        //generating only nodes that are randomly chosen
+        //without generating the whole tree of possible moves
+        for(int i = 0; i < seqLength; i++)
+        {
+            List<string> validMoves = new List<string>(possibleMoves);
+
+
+            if(currentNode != null)
+            {
+                //remove 'previous' move from valid moves of a type
+                //for example if it was "U2" -> "U", "U'" and "U2" will be removed
+                validMoves.RemoveAll(move => move.StartsWith(currentNode.Move[0]));
+                //if previous move was an opposite side then remove it from valid moves
+                //so only the adjacent sides are left
+                if(currentNode.Parent != null)
+                {
+                    if (oppositeSides[currentNode.Move[0].ToString()] == currentNode.Parent.Move[0].ToString())
+                    {
+                        validMoves.RemoveAll(move => move.StartsWith(currentNode.Parent.Move[0]));
+                    }
+                }
+            }
+
+            //select a random move
+            int randomIndex = Random.Range(0, validMoves.Count);
+            string randomMove = validMoves[randomIndex];
+
+            //add this move to the sequence
+            sequence.Add(randomMove);
+            currentNode = new MoveNode(randomMove, currentNode);
+        }
+
+        return sequence;
+    }
+
+
+    public void InputFieldNotationInput(string move)
+    {
+        string formatMove = move.ToUpper();
+
+        if(allMovesList.Contains(formatMove) && !isAnimating){
+            currentMovesList.Add(formatMove);
+        }
+        //else
+        //{
+
+        //}
+        inputField.text = "";
+        inputField.Select();
+        inputField.ActivateInputField();
+    }
+
+    private void DisplaySequence(List<string> moves)
+    {
+        for(int i = 0; i < moves.Count - 1; i++)
+        {
+            tmpSeq.text += moves[i] + " ";
+        }
+        tmpSeq.text += moves[moves.Count - 1];
+    }
+
 
     //automatic rotation of the side by the passed angle
     void AutomaticRotateSide(List<GameObject> side, float angle)
