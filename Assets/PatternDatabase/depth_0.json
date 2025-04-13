@@ -1,0 +1,58 @@
+[
+  {
+    "cornerPermutation": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "cornerOrientation": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "firstEightEdgePermutation": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "lastFourEdgePermutation": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "firstEightEdgeOrientation": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "lastFourEdgeOrientation": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "depth": 0,
+    "solution": null
+  }
+]

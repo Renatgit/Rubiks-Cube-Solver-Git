@@ -18,7 +18,7 @@ public class PivotRotation : MonoBehaviour
 
     private bool autoRotation = false;
     private Quaternion targetQuaternion;
-    private float speed = 300f; //speed of autorotation
+    private float speed = 200f; //speed of autorotation
 
     private int indexOfPiece;
 

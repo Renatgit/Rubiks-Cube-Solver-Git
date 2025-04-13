@@ -265,30 +265,20 @@ public class ReadCube : MonoBehaviour
         edgeNames[11] = cubeState.back[5].transform.parent.name;  // BL
         stickerHit = cubeState.back[5].name;
         edgeGroupedOrientation[11] = cubeState.CalculateEdgeOrientation(edgeNames[11], stickerHit, sideAligned, "L", cubeState.left[3].name);
-        
 
+        //Saves the full edge premutation list
+        List<int> fullEdgePermutation = new List<int>();
         // Sort edges dynamically into first 8 and last 4 based on original solved positions
         for (int i = 0; i < edgeNames.Length; i++)
         {
-            if (edgeIndices[edgeNames[i]] < 8)
-            {
-                firstEightEdges.Add(edgeNames[i]);
-                firstEightEdgesOrientation.Add(edgeGroupedOrientation[i]);
-            }
-            else
-            {
-                lastFourEdges.Add(edgeNames[i]);
-                lastFourEdgesOrientation.Add(edgeGroupedOrientation[i]);
-            }
+            fullEdgePermutation.Add(edgeIndices[edgeNames[i]]); //Add the index of the edge to the list
         }
 
         //Pass edge names to CubeState
-        cubeState.firstEightEdgesNamesPermutation = firstEightEdges.ToArray();
-        cubeState.lastFourEdgesNamesPermutation = lastFourEdges.ToArray();
+        cubeState.fullEdgesPermutation = fullEdgePermutation.ToArray();
 
         //Pass the orientation of the edges to CubeState
-        cubeState.firstEightEdgesOrientation = firstEightEdgesOrientation.ToArray();
-        cubeState.lastFourEdgesOrientation = lastFourEdgesOrientation.ToArray(); 
+        cubeState.fullEdgesOrientation = edgeGroupedOrientation;
 
 
 
@@ -297,12 +287,16 @@ public class ReadCube : MonoBehaviour
 
 
 
-        //Debug.Log("Corner Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerPermutation) + "]");
-        //Debug.Log("Corner Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerOrientation) + "]");
+        Debug.Log("Corner Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerPermutation) + "]");
+        Debug.Log("Corner Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerOrientation) + "]");
+        Debug.Log("Edge 12 Permutation: [" + string.Join(", ", fullEdgePermutation) + "]");
+        Debug.Log("Edge 12 Orientation: [" + string.Join(", ", edgeGroupedOrientation) + "]");
         //Debug.Log("Edge 8 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgePermutation) + "]");
         //Debug.Log("Edge 4 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgePermutation) + "]");
         //Debug.Log("Edge 8 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgeOrientation) + "]");
         //Debug.Log("Edge 4 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgeOrientation) + "]");
+
+        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "L");
 
     }
 }

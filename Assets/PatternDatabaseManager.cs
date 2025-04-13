@@ -7,14 +7,17 @@ using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
 
+[System.Serializable] //make the class JSON-compatible
 public class PatternDatabaseManager : MonoBehaviour
 {
     private static string folderPath;
+    private PDBLoader pdbLoader = new PDBLoader();
     // Start is called before the first frame update
     void Start()
     {
         InitializePatternDatabaseFolder(); //initialises the folder for a pattern database in current directory
         CreateEmptyPatternFiles(20);
+        pdbLoader.LoadPDB();
     }
 
     // Update is called once per frame
@@ -47,8 +50,6 @@ public class PatternDatabaseManager : MonoBehaviour
     {
         string folderPath = GetDatabasePath();
         string filePath = folderPath + "/depth_" + newState.depth + ".json";
-
-        //Debug.Log(filePath);
         
         // Load existing states
         List<CubeStateData> database = LoadPatternDatabase(filePath);
@@ -87,7 +88,7 @@ public class PatternDatabaseManager : MonoBehaviour
 
         for (int depth = 0; depth <= maxDepth; depth++)
         {
-            string filePath = Path.Combine(folderPath, $"depth_{depth}.json");
+            string filePath = folderPath + "/depth_" + depth + ".json";
 
             // If file doesn't exist, create an empty JSON array
             if (!File.Exists(filePath))

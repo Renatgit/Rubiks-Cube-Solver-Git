@@ -14,6 +14,7 @@ public class CubeStateData
     public List<int> lastFourEdgePermutation; // last four edges(0-3)
     public List<int> firstEightEdgeOrientation; //how each corner of the first 8 is flipped (0,1)
     public List<int> lastFourEdgeOrientation; //how each corner of the first 4 is flipped (0,1)
+    public List<int> fullEdgePermutation; //where each edge is(0-11) - all edges in the cube
     public int depth; //precomputed solving depth
     public List<string> solution; //stores mvoe sequence 
 }
@@ -34,6 +35,10 @@ public class CubeState : MonoBehaviour
 
     public int[] lastFourEdgesOrientation; //stores last 4 edges orientation
 
+    public int[] fullEdgesPermutation; //stores all 12 edges permutation
+
+    public int[] fullEdgesOrientation; //stores all 12 edges orientation
+
 
 
     public CubeStateData GetCubeStateData()
@@ -46,6 +51,7 @@ public class CubeState : MonoBehaviour
             lastFourEdgePermutation = GetLastFourEdgePermutation(),
             firstEightEdgeOrientation = GetFirstEightEdgeOrientation(),
             lastFourEdgeOrientation = GetLastFourEdgeOrientation(),
+            fullEdgePermutation = GetFullEdgeOrientation(),
             depth = 0
         };
         return stateData;
@@ -56,14 +62,14 @@ public class CubeState : MonoBehaviour
         List<int> cornerPermutation = new List<int>();
 
         //Correct order of corner GameObjects in the solved state
-        string[] correcCornerOrder = { "UFR", "UFL", "URB", "ULB", "DRF", "DLF", "DRB", "DLB" };
+        string[] correctCornerOrder = { "UFR", "UFL", "URB", "ULB", "DRF", "DLF", "DRB", "DLB" };
 
         // Compare scanned corners to solved order and get permutation
         for(int i = 0; i < 8; i++)
         {
             for(int j = 0; j < 8; j++)
             {
-                if(correcCornerOrder[i] == cornersNamesPermutation[j])
+                if(correctCornerOrder[i] == cornersNamesPermutation[j])
                 {
                     cornerPermutation.Add(j);
                     break;
@@ -88,19 +94,12 @@ public class CubeState : MonoBehaviour
     {
         List<int> firstEightEdgePermutation = new List<int>();
 
-        // Correct solved state order for first 8 edges
-        string[] firstEightEdgeOrder = { "UR", "UL", "UB", "UF", "DR", "DL", "DB", "DF" };
-
         // Compare scanned edges to solved order
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 12; i++)
         {
-            for (int j = 0; j < 8; j++)
+            if (fullEdgesPermutation[i] < 8)
             {
-                if (firstEightEdgeOrder[i] == firstEightEdgesNamesPermutation[j])
-                {
-                    firstEightEdgePermutation.Add(j);
-                    break;
-                }
+                firstEightEdgePermutation.Add(fullEdgesPermutation[i]);
             }
         }
         return firstEightEdgePermutation;
@@ -109,40 +108,48 @@ public class CubeState : MonoBehaviour
     {
         List<int> lastFourEdgePermutation = new List<int>();
 
-        // Correct solved state order for last 4 edges
-        string[] lastFourEdgeOrder = { "FR", "FL", "BR", "BL" };
-
         // Compare scanned edges to solved order
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < 12; i++)
         {
-            for (int j = 0; j < 4; j++)
+            if (fullEdgesPermutation[i] >= 8)
             {
-                if (lastFourEdgeOrder[i] == lastFourEdgesNamesPermutation[j])
-                {
-                    lastFourEdgePermutation.Add(j);
-                    break;
-                }
+                lastFourEdgePermutation.Add(fullEdgesPermutation[i]);
             }
         }
 
         return lastFourEdgePermutation;
     }
+    private List<int> GetFullEdgeOrientation()
+    {
+        List<int> fullEdgeOrientation = new List<int>();
+        for (int i = 0; i < fullEdgesPermutation.Length; i++)
+        {
+            fullEdgeOrientation.Add(fullEdgesPermutation[i]);
+        }
+        return fullEdgeOrientation;
+    }
 
     private List<int> GetFirstEightEdgeOrientation()
     {
         List<int> orientation = new List<int>();
-        for(int i = 0; i < firstEightEdgesOrientation.Length; i++)
+        for(int i = 0; i < 12; i++)
         {
-            orientation.Add(firstEightEdgesOrientation[i]);
+            if (fullEdgesPermutation[i] < 8)
+            {
+                orientation.Add(fullEdgesOrientation[i]);
+            }
         }
         return orientation;
     }
     private List<int> GetLastFourEdgeOrientation()
     {
         List<int> orientation = new List<int>();
-        for (int i = 0; i < lastFourEdgesOrientation.Length; i++)
+        for (int i = 0; i < 12; i++)
         {
-            orientation.Add(lastFourEdgesOrientation[i]);
+            if (fullEdgesPermutation[i] >= 8)
+            {
+                orientation.Add(fullEdgesOrientation[i]);
+            }
         }
         return orientation;
     }
@@ -161,7 +168,7 @@ public class CubeState : MonoBehaviour
         }
         else
         {
-            return 2; //if facing anticlockwise side then orientation is 2 - anticlockwiseSS
+            return 2; //if facing anticlockwise side then orientation is 2 - anticlockwise
         }
     }
 
