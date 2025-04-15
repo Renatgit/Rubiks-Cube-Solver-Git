@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using RubiksCubeSim;
 using System.IO;
 using Newtonsoft.Json;
+using Unity.VisualScripting;
 public class MoveProcessor : MonoBehaviour
 {
     //MoveMaps maps Rubik's Cube moves to their corresponding MoveData
@@ -19,19 +20,25 @@ public class MoveProcessor : MonoBehaviour
             new int[] {1, 3, 0, 2, 4, 5, 6, 7}, //Corner Permutation Map
             new int[] {}, //CornerOrientationToIndex
             new int[] {}, //CornerOrientationFromIndex
-            new int[] { 2, 3, 1, 0, 4, 5, 6, 7, 8, 9, 10, 11 } //FullEdgePermutation map
+            new int[] { 2, 3, 1, 0, 4, 5, 6, 7, 8, 9, 10, 11 }, //FullEdgePermutation map
+            new int[] {0, 1, 2, 3}, //EdgeOrientationToIndex
+            new int[] {2, 3, 1, 0} //EdgeOrientationFromIndex
         ) },
         { "U'", new MoveData( 
             new int[] {2, 0, 3, 1, 4, 5, 6, 7}, 
             new int[] {}, 
             new int[] {},
-            new int[] { 3, 2, 0, 1, 4, 5, 6, 7, 8, 9, 10, 11 }
+            new int[] { 3, 2, 0, 1, 4, 5, 6, 7, 8, 9, 10, 11 }, 
+            new int[] {0, 1, 2, 3}, 
+            new int[] { 3, 2, 0, 1 } 
         ) },
         { "U2", new MoveData( 
             new int[] {3, 2, 1, 0, 4, 5, 6, 7}, 
             new int[] {},
             new int[] {},
-            new int[] { 1, 0, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11 }
+            new int[] { 1, 0, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11 },
+            new int[] {0, 1, 2, 3},
+            new int[] { 1, 0, 3, 2 }
         ) },
         { "L", new MoveData( 
             new int[] { 0, 5, 2, 1, 4, 7, 6, 3 },
@@ -55,7 +62,9 @@ public class MoveProcessor : MonoBehaviour
             new int[] { 2, 1, 6, 3, 0, 5, 4, 7 },
             new int[]{ 0, 2, 4, 6 },
             new int[]{ 4, 0, 6, 2 },
-            new int[] { 8, 1, 2, 3, 10, 5, 6, 7, 4, 9, 0, 11 }
+            new int[] { 8, 1, 2, 3, 10, 5, 6, 7, 4, 9, 0, 11 },
+            new int[] {0, 4, 8, 10},
+            new int[] {8, 10, 4, 0}
         ) },
         { "R'", new MoveData(
             new int[] { 4, 1, 0, 3, 6, 5, 2, 7 },
@@ -73,19 +82,25 @@ public class MoveProcessor : MonoBehaviour
             new int[] { 0, 1, 2, 3, 6, 4, 7, 5 },
             new int[] {},
             new int[] {},
-            new int[] { 0, 1, 2, 3, 7, 6, 4, 5, 8, 9, 10, 11 }
+            new int[] { 0, 1, 2, 3, 7, 6, 4, 5, 8, 9, 10, 11 },
+            new int[] {4, 5, 6, 7},
+            new int[] {7, 6, 4, 5}
         ) },
         { "D'", new MoveData(
             new int[] { 0, 1, 2, 3, 5, 7, 4, 6 },
             new int[] {},
             new int[] {},
-            new int[] { 0, 1, 2, 3, 6, 7, 5, 4, 8, 9, 10, 11 }
+            new int[] { 0, 1, 2, 3, 6, 7, 5, 4, 8, 9, 10, 11 },
+            new int[] {4, 5, 6, 7},
+            new int[] {6, 7, 5, 4}
         ) },
         { "D2", new MoveData(
             new int[] { 0, 1, 2, 3, 7, 6, 5, 4 },
             new int[] {},
             new int[] {},
-            new int[] { 0, 1, 2, 3, 5, 4, 7, 6, 8, 9, 10, 11 }
+            new int[] { 0, 1, 2, 3, 5, 4, 7, 6, 8, 9, 10, 11 },
+            new int[] {4, 5, 6, 7},
+            new int[] {5, 4, 7, 6}
         ) },
         { "F", new MoveData(
             new int[] { 4, 0, 2, 3, 5, 1, 6, 7 },
@@ -147,8 +162,6 @@ public class MoveProcessor : MonoBehaviour
             int currentNumIndex = state.cornerPermutation.IndexOf(i);
             newCornerPerm[currentNumIndex] = MoveMaps[move].CornerPermutation[i];
         }
-        state.cornerPermutation = newCornerPerm;
-
 
         //Updates the CORNER ORIENTATION
         List<int> newCornerOrient = new List<int>(state.cornerOrientation);
@@ -160,18 +173,164 @@ public class MoveProcessor : MonoBehaviour
         {
             newFullEdgePermutation[i] = state.fullEdgePermutation[MoveMaps[move].FullEdgePermutation[i]];
         }
-        state.fullEdgePermutation = newFullEdgePermutation;
+
+        //Updates the EDGE ORIENTATION
+        List<int> newFullEdgeOrientation = new List<int>(state.fullEdgeOrientation);
+        newFullEdgeOrientation = GetNewEdgeOrientation(state.fullEdgePermutation, state.fullEdgeOrientation, state.lastFourEdgeAlingment, move, MoveMaps[move].EdgeOrientationToIndex, MoveMaps[move].EdgeOrientationFromIndex);
+
+
 
 
         //Debug.Log("Corner Permutation NEXT MOVE: [" + string.Join(", ", newCornerPerm) + "]\n--------------------------------------------------------------------------");
         //Debug.Log("Corner Orientation NEXT MOVE: [" + string.Join(", ", newCornerOrient) + "]\n--------------------------------------------------------------------------");
         //Debug.Log("Edge Permutation NEXT MOVE: [" + string.Join(", ", newFullEdgePermutation) + "]\n--------------------------------------------------------------------------");
+        Debug.Log("Edge Orientation NEXT MOVE: [" + string.Join(", ", newFullEdgeOrientation) + "]\n--------------------------------------------------------------------------");
 
+        state.cornerPermutation = newCornerPerm;
+        state.cornerOrientation = newCornerOrient;
+        state.fullEdgePermutation = newFullEdgePermutation;
+    }
+
+    private static List<int> GetNewEdgeOrientation(List<int> permutation, List<int> orientation, Dictionary<int, string> alignment, string move, int[] ToIndex, int[] FromIndex)
+    {
+        List<int> newOrientation = new List<int>(orientation);
+        //Moves "U" and "D" do not affect edge orientation values
+        //Moves "U" and "D" only swap the orientation values of the edges
+        if (move[0] == 'U' || move[0] == 'D')
+        {
+            newOrientation = GetUorDEdgeOrientaionChange(permutation, orientation, alignment, move, ToIndex, FromIndex);
+            return newOrientation;
+        }
+        //Moves "R", "L", "F", and "B" affect edge orientation values
+        else if (move != null)
+        {
+            //new int[] { 0, 4, 8, 10 }, To
+            //new int[] { 8, 10, 4, 0 }  From
+            for(int i = 0; i < 4; i++)
+            {
+                if (permutation[FromIndex[i]] < 4 && orientation[FromIndex[i]] == 0) //if the affected edge is one of the yellow edges
+                {
+                    newOrientation[ToIndex[i]] = 1; 
+                }
+            }
+            return null;
+        }
+        else
+        {
+            Debug.LogError("Move is null or empty.");
+            return null;
+        }
+            
+    }
+
+    private static List<int> GetUorDEdgeOrientaionChange(List<int> permutation, List<int> orientation, Dictionary<int, string> alignment, string move, int[] ToIndex, int[] FromIndex)
+    {
+        List<int> newOrientation = new List<int>(orientation);
+        for (int i = 0; i < 4; i++)
+        {
+            if (permutation[FromIndex[i]] < 8) //if piece, that is coming to the new position, is one of the white or yellow edges
+            {
+                //set the orientation of the piece in the new position to the orientation of the piece in the old position
+                newOrientation[ToIndex[i]] = orientation[FromIndex[i]];
+                continue;
+            }
+            else
+            {
+                //if piece with no yellow/white sides is aligned with the other side in old position
+                //then rotation 'U' or 'D' will break this aligning and the new orientation = flipped
+                if (orientation[FromIndex[i]] == 0)
+                {
+                    newOrientation[ToIndex[i]] = 1;
+                }
+
+                else
+                {
+                    if (ToIndex[i] == 0 || ToIndex[i] == 4) //if affected edge is on the right side
+                    {
+                        int edgeIndex = permutation[FromIndex[i]];
+                        if (edgeIndex == 8 || edgeIndex == 10)
+                        {
+                            if (alignment[edgeIndex] == "R")
+                            {
+                                newOrientation[ToIndex[i]] = 0;
+                            }
+                            else
+                            {
+                                newOrientation[ToIndex[i]] = 1;
+                            }
+                        }
+                        else
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                        }
+                    }
+                    else if (ToIndex[i] == 1 || ToIndex[i] == 5) //if affected edge is on the left side
+                    {
+                        int edgeIndex = permutation[FromIndex[i]];
+                        if (edgeIndex == 9 || edgeIndex == 11)
+                        {
+                            if (alignment[edgeIndex] == "L")
+                            {
+                                newOrientation[ToIndex[i]] = 0;
+                            }
+                            else
+                            {
+                                newOrientation[ToIndex[i]] = 1;
+                            }
+                        }
+                        else
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                        }
+                    }
+                    else if (ToIndex[i] == 2 || ToIndex[i] == 6) //if affected edge is on the back side
+                    {
+                        int edgeIndex = permutation[FromIndex[i]];
+                        if (edgeIndex == 10 || edgeIndex == 11)
+                        {
+                            if (alignment[edgeIndex] == "B")
+                            {
+                                newOrientation[ToIndex[i]] = 0;
+                            }
+                            else
+                            {
+                                newOrientation[ToIndex[i]] = 1;
+                            }
+                        }
+                        else
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                        }
+                    }
+                    else if (ToIndex[i] == 3 || ToIndex[i] == 7) //if affected edge is on the front side
+                    {
+                        int edgeIndex = permutation[FromIndex[i]];
+                        if (edgeIndex == 8 || edgeIndex == 9)
+                        {
+                            if (alignment[edgeIndex] == "F")
+                            {
+                                newOrientation[ToIndex[i]] = 0;
+                            }
+                            else
+                            {
+                                newOrientation[ToIndex[i]] = 1;
+                            }
+                        }
+                        else
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                        }
+                    }
+                }
+            }
+        }
+        return newOrientation;
     }
 
     private static List<int> GetNewCornerOrientation(List<int> orientation, string move, int[] ToIndex, int[] FromIndex)
     {
-        if (move[0] == 'R') //calls the method to return a corner orientation based on the move
+        //calls the method to return a corner orientation based on the move
+        if (move[0] == 'R') 
         {
             if (move.Contains("2"))
             {
@@ -238,8 +397,9 @@ public class MoveProcessor : MonoBehaviour
     {
         List<int> newCornerOrientation = new List<int>(currentOrientation);
         for (int i = 0; i < 8; i++)
-        {
-            if(Array.Exists(ToIndex, element => element == i))
+        {   
+            //if the element("i") is in the array of affected corners(ToIndex -> CornerOrientationToIndex)
+            if (Array.Exists(ToIndex, element => element == i)) 
             {
                 if(i == 0 || i == 6)
                 {

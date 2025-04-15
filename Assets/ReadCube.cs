@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using RubiksCubeSim;
+using System.Text;
 
 public class ReadCube : MonoBehaviour
 {
@@ -199,9 +200,9 @@ public class ReadCube : MonoBehaviour
             {"DR", 4}, {"DL", 5}, {"DB", 6}, {"DF", 7},
             {"FR", 8}, {"FL", 9}, {"BR", 10}, {"BL", 11}
         };
-        //Get 12 edges of the cube and divide into two 8 and 4-item arrays
-        //in location order
-        List<string> firstEightEdges = new List<string>();
+    //Get 12 edges of the cube and divide into two 8 and 4-item arrays
+    //in location order
+    List<string> firstEightEdges = new List<string>();
         List<string> lastFourEdges = new List<string>();
         List<int> firstEightEdgesOrientation = new List<int>();
         List<int> lastFourEdgesOrientation = new List<int>();
@@ -215,60 +216,86 @@ public class ReadCube : MonoBehaviour
         edgeNames[0] = cubeState.up[5].transform.parent.name;  // UR(or the piece in its position and same for all the following)
 
         string stickerHit = cubeState.up[5].name;
+        string secondStickerHit = cubeState.right[1].name; 
         string sideAligned = "Up";
-        edgeGroupedOrientation[0] = cubeState.CalculateEdgeOrientation(edgeNames[0], stickerHit, sideAligned);
+        string secondSideAligned = "R";
+        edgeGroupedOrientation[0] = cubeState.CalculateEdgeOrientation(edgeNames[0], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
+
 
         edgeNames[1] = cubeState.up[3].transform.parent.name;  // UL
         stickerHit = cubeState.up[3].name;
-        edgeGroupedOrientation[1] = cubeState.CalculateEdgeOrientation(edgeNames[1], stickerHit, sideAligned);
+        secondStickerHit = cubeState.left[1].name;
+        secondSideAligned = "L";
+        edgeGroupedOrientation[1] = cubeState.CalculateEdgeOrientation(edgeNames[1], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[2] = cubeState.up[1].transform.parent.name;  // UB
         stickerHit = cubeState.up[1].name;
-        edgeGroupedOrientation[2] = cubeState.CalculateEdgeOrientation(edgeNames[2], stickerHit, sideAligned);
+        secondStickerHit = cubeState.back[1].name;
+        secondSideAligned = "B";
+        edgeGroupedOrientation[2] = cubeState.CalculateEdgeOrientation(edgeNames[2], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[3] = cubeState.up[7].transform.parent.name;  // UF
         stickerHit = cubeState.up[7].name;
-        edgeGroupedOrientation[3] = cubeState.CalculateEdgeOrientation(edgeNames[3], stickerHit, sideAligned);
+        secondStickerHit = cubeState.front[1].name;
+        secondSideAligned = "F";
+        edgeGroupedOrientation[3] = cubeState.CalculateEdgeOrientation(edgeNames[3], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
+        //------------------------------------//
         sideAligned = "Down";
         edgeNames[4] = cubeState.down[5].transform.parent.name; // DR
         stickerHit = cubeState.down[5].name;
-        edgeGroupedOrientation[4] = cubeState.CalculateEdgeOrientation(edgeNames[4], stickerHit, sideAligned);
+        secondStickerHit = cubeState.right[7].name;
+        secondSideAligned = "R";
+        edgeGroupedOrientation[4] = cubeState.CalculateEdgeOrientation(edgeNames[4], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[5] = cubeState.down[3].transform.parent.name; // DL
         stickerHit = cubeState.down[3].name;
-        edgeGroupedOrientation[5] = cubeState.CalculateEdgeOrientation(edgeNames[5], stickerHit, sideAligned);
+        secondStickerHit = cubeState.left[7].name;
+        secondSideAligned = "L";
+        edgeGroupedOrientation[5] = cubeState.CalculateEdgeOrientation(edgeNames[5], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[6] = cubeState.down[7].transform.parent.name; // DB
         stickerHit = cubeState.down[7].name;
-        edgeGroupedOrientation[6] = cubeState.CalculateEdgeOrientation(edgeNames[6], stickerHit, sideAligned);
+        secondStickerHit = cubeState.back[7].name;
+        secondSideAligned = "B";
+        edgeGroupedOrientation[6] = cubeState.CalculateEdgeOrientation(edgeNames[6], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[7] = cubeState.down[1].transform.parent.name; // DF
         stickerHit = cubeState.down[1].name;
-        edgeGroupedOrientation[7] = cubeState.CalculateEdgeOrientation(edgeNames[7], stickerHit, sideAligned);
+        secondStickerHit = cubeState.front[7].name;
+        secondSideAligned = "F";
+        edgeGroupedOrientation[7] = cubeState.CalculateEdgeOrientation(edgeNames[7], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         //Last 4 edges (FR, FL, BR, BL)
         sideAligned = "Front";
         edgeNames[8] = cubeState.front[5].transform.parent.name;  // FR
         stickerHit = cubeState.front[5].name;
+        secondStickerHit = cubeState.right[3].name;
+        secondSideAligned = "R";
         edgeGroupedOrientation[8] = cubeState.CalculateEdgeOrientation(edgeNames[8], stickerHit, sideAligned, "R", cubeState.right[3].name);
 
         edgeNames[9] = cubeState.front[3].transform.parent.name;  // FL
         stickerHit = cubeState.front[3].name;
+        secondStickerHit = cubeState.left[5].name;
+        secondSideAligned = "L";
         edgeGroupedOrientation[9] = cubeState.CalculateEdgeOrientation(edgeNames[9], stickerHit, sideAligned, "L", cubeState.left[5].name);
 
         sideAligned = "Back";
         edgeNames[10] = cubeState.back[3].transform.parent.name;  // BR
         stickerHit = cubeState.back[3].name;
+        secondStickerHit = cubeState.right[5].name;
+        secondSideAligned = "R";
         edgeGroupedOrientation[10] = cubeState.CalculateEdgeOrientation(edgeNames[10], stickerHit, sideAligned, "R", cubeState.right[5].name);
 
         edgeNames[11] = cubeState.back[5].transform.parent.name;  // BL
         stickerHit = cubeState.back[5].name;
+        secondStickerHit = cubeState.back[3].name;
+        secondSideAligned = "L";
         edgeGroupedOrientation[11] = cubeState.CalculateEdgeOrientation(edgeNames[11], stickerHit, sideAligned, "L", cubeState.left[3].name);
 
         //Saves the full edge premutation list
         List<int> fullEdgePermutation = new List<int>();
-        // Sort edges dynamically into first 8 and last 4 based on original solved positions
+
         for (int i = 0; i < edgeNames.Length; i++)
         {
             fullEdgePermutation.Add(edgeIndices[edgeNames[i]]); //Add the index of the edge to the list
@@ -287,16 +314,16 @@ public class ReadCube : MonoBehaviour
 
 
 
-        Debug.Log("Corner Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerPermutation) + "]");
-        Debug.Log("Corner Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerOrientation) + "]");
-        Debug.Log("Edge 12 Permutation: [" + string.Join(", ", fullEdgePermutation) + "]");
-        Debug.Log("Edge 12 Orientation: [" + string.Join(", ", edgeGroupedOrientation) + "]");
+        //Debug.Log("Corner Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerPermutation) + "]");
+        //Debug.Log("Corner Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerOrientation) + "]");
+        Debug.Log("Edge 12 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().fullEdgePermutation) + "]");
+        Debug.Log("Edge 12 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().fullEdgeOrientation) + "]");
         //Debug.Log("Edge 8 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgePermutation) + "]");
         //Debug.Log("Edge 4 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgePermutation) + "]");
         //Debug.Log("Edge 8 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgeOrientation) + "]");
         //Debug.Log("Edge 4 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgeOrientation) + "]");
 
-        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "L");
+        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "D2");
 
     }
 }

@@ -15,6 +15,8 @@ public class CubeStateData
     public List<int> firstEightEdgeOrientation; //how each corner of the first 8 is flipped (0,1)
     public List<int> lastFourEdgeOrientation; //how each corner of the first 4 is flipped (0,1)
     public List<int> fullEdgePermutation; //where each edge is(0-11) - all edges in the cube
+    public List<int> fullEdgeOrientation; //where each edge is(0-11) - all edges in the cube
+    public Dictionary<int, string> lastFourEdgeAlingment; // stores the last four edges alignment with the cube sides(mom-white/yellow)
     public int depth; //precomputed solving depth
     public List<string> solution; //stores mvoe sequence 
 }
@@ -39,6 +41,14 @@ public class CubeState : MonoBehaviour
 
     public int[] fullEdgesOrientation; //stores all 12 edges orientation
 
+    public Dictionary<int, string> LastFourEdgesAlingment = new Dictionary<int, string>()
+    {
+        { 8, "None" },
+        { 9, "None" },
+        { 10, "None" },
+        { 11, "None" }
+    }; // stores the last four edges alignment with the cube sides(mom-white/yellow)
+
 
 
     public CubeStateData GetCubeStateData()
@@ -51,7 +61,9 @@ public class CubeState : MonoBehaviour
             lastFourEdgePermutation = GetLastFourEdgePermutation(),
             firstEightEdgeOrientation = GetFirstEightEdgeOrientation(),
             lastFourEdgeOrientation = GetLastFourEdgeOrientation(),
-            fullEdgePermutation = GetFullEdgeOrientation(),
+            fullEdgePermutation = GetFullEdgePermutation(),
+            fullEdgeOrientation = GetFullEdgeOrientation(),
+            lastFourEdgeAlingment = LastFourEdgesAlingment,
             depth = 0
         };
         return stateData;
@@ -119,14 +131,23 @@ public class CubeState : MonoBehaviour
 
         return lastFourEdgePermutation;
     }
-    private List<int> GetFullEdgeOrientation()
+    private List<int> GetFullEdgePermutation()
     {
-        List<int> fullEdgeOrientation = new List<int>();
+        List<int> EdgePermutation = new List<int>();
         for (int i = 0; i < fullEdgesPermutation.Length; i++)
         {
-            fullEdgeOrientation.Add(fullEdgesPermutation[i]);
+            EdgePermutation.Add(fullEdgesPermutation[i]);
         }
-        return fullEdgeOrientation;
+        return EdgePermutation;
+    }
+    private List<int> GetFullEdgeOrientation()
+    {
+        List<int> EdgeOrientation = new List<int>();
+        for (int i = 0; i < fullEdgesOrientation.Length; i++)
+        {
+            EdgeOrientation.Add(fullEdgesOrientation[i]);
+        }
+        return EdgeOrientation;
     }
 
     private List<int> GetFirstEightEdgeOrientation()
@@ -172,37 +193,57 @@ public class CubeState : MonoBehaviour
         }
     }
 
-    public int CalculateEdgeOrientation(string edgeName, string faceHit, string sideAligned, string secondSideAligned = "None", string secondStickerFor4Edges = "None")
+    public int CalculateEdgeOrientation(string edgeName, string stickerHit, string sideAligned, string secondSideAligned = "None", string secondStickerHit = "None")
     {
-        if (edgeName[0] == 'U' && faceHit == "Up" && sideAligned == "Up")
+        if (edgeName[0] == 'U' && stickerHit == "Up" && sideAligned == "Up") //if piece with yellow sticker aligns ONLY with yellow side
         {
             return 0;
         }
-        else if(edgeName[0] == 'D' && faceHit == "Down" && sideAligned == "Down")
+        else if(edgeName[0] == 'D' && stickerHit == "Down" && sideAligned == "Down") //if piece with white sticker aligns ONLY with white side
         {
             return 0;
         }
-        else if (edgeName[0] == 'F' && faceHit == "Front" && sideAligned == "Front" && secondSideAligned == "R" && secondStickerFor4Edges == "Right")
+        //For pieces FR, FL, BR and BL:
+        //The piece should align with one of the side of the same colour
+        else if (edgeName[0] == 'F' || edgeName[0] == 'B')
         {
-            return 0;
+
+            //=>
+            //-------Block of code for FR, FL, BR and BL pieces for their alignment info-------
+            if (sideAligned[0] == 'U' || sideAligned[0] == 'D')
+            {
+                //if the piece is aligned with the top or bottom side
+                //-> set the value of the corresponding key index to the secondStickerHit
+
+
+                LastFourEdgesAlingment[edgeIndices[edgeName]] = secondStickerHit[0].ToString(); 
+            }
+            else
+            {
+                LastFourEdgesAlingment[edgeIndices[edgeName]] = "None";
+            }
+            //Debug.Log(edgeIndices[edgeName] + " -> " + LastFourEdgesAlingment[edgeIndices[edgeName]]);
+            //----------------------------------------------------------------------------------
+            //=>
+
+            if (stickerHit[0] == sideAligned[0])// if the first sticker is aligned with teh side of the same colour 
+            {
+                return 0;
+            }
+            else if (secondStickerHit[0] == secondSideAligned[0]) // if the second sticker is aligned with teh side of the same colour 
+            {
+                return 0;
+            }
         }
-        else if (edgeName[0] == 'F' && faceHit == "Front" && sideAligned == "Front" && secondSideAligned == "L" && secondStickerFor4Edges == "Left")
-        {
-            return 0;
-        }
-        else if (edgeName[0] == 'B' && faceHit == "Back" && sideAligned == "Back" && secondSideAligned == "R" && secondStickerFor4Edges == "Right")
-        {
-            return 0;
-        }
-        else if (edgeName[0] == 'B' && faceHit == "Back" && sideAligned == "Back" && secondSideAligned == "L" && secondStickerFor4Edges == "Left")
-        {
-            return 0;
-        }
-        else
-        {
-            return 1;
-        }
+        return 1;
     }
+
+    Dictionary<string, int> edgeIndices = new Dictionary<string, int>
+        {
+            {"UR", 0}, {"UL", 1}, {"UB", 2}, {"UF", 3},
+            {"DR", 4}, {"DL", 5}, {"DB", 6}, {"DF", 7},
+            {"FR", 8}, {"FL", 9}, {"BR", 10}, {"BL", 11}
+        };
     //sides
     public List<GameObject> front = new List<GameObject>();
     public List<GameObject> back = new List<GameObject>();
