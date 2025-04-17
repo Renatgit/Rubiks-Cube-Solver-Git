@@ -7,6 +7,7 @@ using RubiksCubeSim;
 using System.IO;
 using Newtonsoft.Json;
 using Unity.VisualScripting;
+using System.Linq;
 public class MoveProcessor : MonoBehaviour
 {
     //MoveMaps maps Rubik's Cube moves to their corresponding MoveData
@@ -44,19 +45,25 @@ public class MoveProcessor : MonoBehaviour
             new int[] { 0, 5, 2, 1, 4, 7, 6, 3 },
             new int[] {1, 3, 5, 7},
             new int[] {3, 7, 1, 5},
-            new int[] { 0, 11, 2, 3, 4, 9, 6, 7, 8, 1, 10, 5 }
+            new int[] { 0, 11, 2, 3, 4, 9, 6, 7, 8, 1, 10, 5 },
+            new int[] {1, 5, 9, 11},
+            new int[] {11, 9, 1, 5}
         ) },
         { "L'", new MoveData(
             new int[] { 0, 3, 2, 7, 4, 1, 6, 5 },
             new int[] {1, 3, 5, 7},
             new int[] {5, 1, 7, 3},
-            new int[] { 0, 9, 2, 3, 4, 11, 6, 7, 8, 5, 10, 1 }
+            new int[] { 0, 9, 2, 3, 4, 11, 6, 7, 8, 5, 10, 1 },
+            new int[] {1, 5, 9, 11},
+            new int[] {9, 11, 5, 1}
         ) },
         { "L2", new MoveData(
             new int[] { 0, 7, 2, 5, 4, 3, 6, 1 },
             new int[] {1, 3, 5, 7},
             new int[] { 3, 7, 1, 5 },
-            new int[] { 0, 5, 2, 3, 4, 1, 6, 7, 8, 11, 10, 9 }
+            new int[] { 0, 5, 2, 3, 4, 1, 6, 7, 8, 11, 10, 9 },
+            new int[] {1, 5, 9, 11},
+            new int[] {5, 1, 11, 9}
         ) },
         { "R", new MoveData(
             new int[] { 2, 1, 6, 3, 0, 5, 4, 7 },
@@ -70,13 +77,17 @@ public class MoveProcessor : MonoBehaviour
             new int[] { 4, 1, 0, 3, 6, 5, 2, 7 },
             new int[]{ 0, 2, 4, 6 },
             new int[]{ 2, 6, 0, 4 },
-            new int[] { 10, 1, 2, 3, 8, 5, 6, 7, 0, 9, 4, 11 }
+            new int[] { 10, 1, 2, 3, 8, 5, 6, 7, 0, 9, 4, 11 },
+            new int[] {0, 4, 8, 10},
+            new int[] {10, 8, 0, 4}
         ) },
         { "R2", new MoveData(
             new int[] { 6, 1, 4, 3, 2, 5, 0, 7 },
             new int[]{ 0, 2, 4, 6 },
             new int[]{ 4, 0, 6, 2 },
-            new int[] { 4, 1, 2, 3, 0, 5, 6, 7, 10, 9, 8, 11 }
+            new int[] { 4, 1, 2, 3, 0, 5, 6, 7, 10, 9, 8, 11 },
+            new int[] {0, 4, 8, 10},
+            new int[] {4, 0, 10, 8}
         ) },
         { "D", new MoveData(
             new int[] { 0, 1, 2, 3, 6, 4, 7, 5 },
@@ -106,37 +117,49 @@ public class MoveProcessor : MonoBehaviour
             new int[] { 4, 0, 2, 3, 5, 1, 6, 7 },
             new int[] {0, 1, 4, 5},
             new int[] {1, 5, 0, 4},
-            new int[] { 0, 1, 2, 9, 4, 5, 6, 8, 3, 7, 10, 11 }
+            new int[] { 0, 1, 2, 9, 4, 5, 6, 8, 3, 7, 10, 11 },
+            new int[] {3, 7, 8, 9},
+            new int[] {9, 8, 3, 7}
         ) },
         { "F'", new MoveData(
             new int[] { 1, 5, 2, 3, 0, 4, 6, 7 },
             new int[] {0, 1, 4, 5},
             new int[] {4, 0, 5, 1},
-            new int[] { 0, 1, 2, 8, 4, 5, 6, 9, 7, 3, 10, 11 }
+            new int[] { 0, 1, 2, 8, 4, 5, 6, 9, 7, 3, 10, 11 },
+            new int[] {3, 7, 8, 9},
+            new int[] {8, 9, 7, 3}
         ) },
         { "F2", new MoveData(
             new int[] { 5, 4, 2, 3, 1, 0, 6, 7 },
             new int[] {0, 1, 4, 5},
             new int[] {1, 5, 0, 4},
-            new int[] { 0, 1, 2, 7, 4, 5, 6, 3, 9, 8, 10, 11 }
+            new int[] { 0, 1, 2, 7, 4, 5, 6, 3, 9, 8, 10, 11 },
+            new int[] {3, 7, 8, 9},
+            new int[] {7, 3, 9, 8}
         ) },
         { "B", new MoveData(
             new int[] { 0, 1, 3, 7, 4, 5, 2, 6 },
             new int[] {2, 3, 6, 7},
             new int[] {6, 2, 7, 3},
-            new int[] { 0, 1, 10, 3, 4, 5, 11, 7, 8, 9, 6, 2 }
+            new int[] { 0, 1, 10, 3, 4, 5, 11, 7, 8, 9, 6, 2 },
+            new int[] {2, 6, 10, 11},
+            new int[] {10, 11, 6, 2}
         ) },
         { "B'", new MoveData(
             new int[] { 0, 1, 3, 7, 4, 5, 2, 6 },
             new int[] {2, 3, 6, 7},
             new int[] {3, 7, 2, 6},
-            new int[] { 0, 1, 11, 3, 4, 5, 10, 7, 8, 9, 2, 6 }
+            new int[] { 0, 1, 11, 3, 4, 5, 10, 7, 8, 9, 2, 6 },
+            new int[] {2, 6, 10, 11},
+            new int[] {11, 10, 2, 6}
         ) },
         { "B2", new MoveData(
             new int[] { 0, 1, 7, 6, 4, 5, 3, 2 },
             new int[] {2, 3, 6, 7},
             new int[] { 6, 2, 7, 3 },
-            new int[] { 0, 1, 6, 3, 4, 5, 2, 7, 8, 9, 11, 10 }
+            new int[] { 0, 1, 6, 3, 4, 5, 2, 7, 8, 9, 11, 10 },
+            new int[] {2, 6, 10, 11},
+            new int[] {6, 2, 11, 10}
         ) }
 
     };
@@ -176,7 +199,15 @@ public class MoveProcessor : MonoBehaviour
 
         //Updates the EDGE ORIENTATION
         List<int> newFullEdgeOrientation = new List<int>(state.fullEdgeOrientation);
-        newFullEdgeOrientation = GetNewEdgeOrientation(state.fullEdgePermutation, state.fullEdgeOrientation, state.lastFourEdgeAlingment, move, MoveMaps[move].EdgeOrientationToIndex, MoveMaps[move].EdgeOrientationFromIndex);
+        newFullEdgeOrientation = GetNewEdgeOrientation(
+            state.fullEdgePermutation, 
+            state.fullEdgeOrientation, 
+            state.lastFourEdgeAlignment, 
+            state.firstEightEdgesAlignment,
+            move, 
+            MoveMaps[move].EdgeOrientationToIndex, 
+            MoveMaps[move].EdgeOrientationFromIndex
+            );
 
 
 
@@ -190,40 +221,294 @@ public class MoveProcessor : MonoBehaviour
         state.cornerOrientation = newCornerOrient;
         state.fullEdgePermutation = newFullEdgePermutation;
     }
-
-    private static List<int> GetNewEdgeOrientation(List<int> permutation, List<int> orientation, Dictionary<int, string> alignment, string move, int[] ToIndex, int[] FromIndex)
+    private static List<int> GetNewEdgeOrientation(
+        List<int> permutation,
+        List<int> orientation,
+        Dictionary<int, string> lastFourAlignment,
+        Dictionary<int, string> firstEightAlignment,
+        string move, int[] ToIndex, int[] FromIndex
+        )
     {
         List<int> newOrientation = new List<int>(orientation);
         //Moves "U" and "D" do not affect edge orientation values
         //Moves "U" and "D" only swap the orientation values of the edges
         if (move[0] == 'U' || move[0] == 'D')
         {
-            newOrientation = GetUorDEdgeOrientaionChange(permutation, orientation, alignment, move, ToIndex, FromIndex);
+            newOrientation = GetUorDEdgeOrientaionChange(permutation, orientation, lastFourAlignment, firstEightAlignment, move, ToIndex, FromIndex);
             return newOrientation;
         }
+
         //Moves "R", "L", "F", and "B" affect edge orientation values
         else if (move != null)
         {
-            //new int[] { 0, 4, 8, 10 }, To
-            //new int[] { 8, 10, 4, 0 }  From
-            for(int i = 0; i < 4; i++)
+            List<int> upSidePositions = new List<int> { 0, 1, 2, 3 };
+            List<int> downSidePosiions = new List<int> { 4, 5, 6, 7 };
+            for (int i = 0; i < 4; i++)
             {
-                if (permutation[FromIndex[i]] < 4 && orientation[FromIndex[i]] == 0) //if the affected edge is one of the yellow edges
+                int edgeFrom = permutation[FromIndex[i]]; //the edge that is coming to the new position
+                if (upSidePositions.Contains(edgeFrom)) //if the affected edge is one of the yellow edges
                 {
-                    newOrientation[ToIndex[i]] = 1; 
+                    if (upSidePositions.Contains(ToIndex[i]))
+                    {
+                        if (firstEightAlignment[edgeFrom] == move[0].ToString())
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                        }
+                        else
+                        {
+                            newOrientation[ToIndex[i]] = 0;
+                            //firstEightAlignment[edgeFrom] = "U";
+                        }
+                    }
+                    else
+                    {
+                        newOrientation[ToIndex[i]] = 1;
+                    }
+                }
+                else if (downSidePosiions.Contains(edgeFrom)) //if the affected edge is one of the white edges
+                {
+                    if (downSidePosiions.Contains(ToIndex[i]))
+                    {
+                        if (firstEightAlignment[edgeFrom] == move[0].ToString())
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                        }
+                        else
+                        {
+                            newOrientation[ToIndex[i]] = 0;
+                        }
+                    }
+                    else
+                    {
+                        newOrientation[ToIndex[i]] = 1;
+                    }
+                }
+                else if (edgeFrom >= 8) //non-yellow/non-white edges
+                { 
+                    if (orientation[FromIndex[i]] == 0) //if the orientation of the edge 8-11 is 0
+                    {
+                        if (ToIndex.Contains(edgeFrom)) //if the edge IS between two sides of its colours
+                        { 
+                            newOrientation[ToIndex[i]] = 0;
+                            lastFourAlignment[edgeFrom] = move[0].ToString();
+                        }
+                        else //if the edge IS NOT between two sides of its colours
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                            if (edgeFrom == 8)
+                            {
+                                //if (move[0] == 'B')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "F";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "R";
+                                //}
+                            }
+                            if (edgeFrom == 9)
+                            {
+                                //if (move[0] == 'B')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "F";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "L";
+                                //}
+                            }
+                            if (edgeFrom == 10)
+                            {
+                                //if (move[0] == 'F')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "B";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "R";
+                                //}
+                            }
+                            if (edgeFrom == 11)
+                            {
+                                //if (move[0] == 'F')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "B";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "L";
+                                //}
+                            }
+                        }
+                    }
+                    else //if the orientation of the edge 8-11 is 1
+                    {
+                        if (ToIndex.Contains(edgeFrom)) //if the edge IS between two sides of its colours
+                        {
+                            newOrientation[ToIndex[i]] = 1;
+                            if (edgeFrom == 8)
+                            {
+                                //if (move[0] == 'F')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "R";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "F";
+                                //}
+                            }
+                            else if (edgeFrom == 9)
+                            {
+                                //if (move[0] == 'F')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "L";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "F";
+                                //}
+                            }
+                            else if (edgeFrom == 10)
+                            {
+                                //if (move[0] == 'B')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "R";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "B";
+                                //}
+                            }
+                            else if (edgeFrom == 11)
+                            {
+                                //if (move[0] == 'B')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "L";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "B";
+                                //}
+                            }
+                        }
+                        else //if the edge IS NOT between two sides of its colours
+                        {
+                            if (edgeFrom == 8)
+                            {
+                                if (lastFourAlignment[edgeFrom] == "R" && ToIndex[i] == 9)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else if (lastFourAlignment[edgeFrom] == "F" && ToIndex[i] == 10)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else
+                                {
+                                    newOrientation[ToIndex[i]] = 1;
+                                }
+
+                                //if (move[0] == 'B')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "R";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "F";
+                                //}
+                            }
+                            else if (edgeFrom == 9)
+                            {
+                                if (lastFourAlignment[edgeFrom] == "F" && ToIndex[i] == 11)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else if (lastFourAlignment[edgeFrom] == "L" && ToIndex[i] == 8)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else
+                                {
+                                    newOrientation[ToIndex[i]] = 1;
+                                }
+
+                                //if (move[0] == 'B')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "L";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "F";
+                                //}
+                            }
+                            else if(edgeFrom == 10)
+                            {
+                                if (lastFourAlignment[edgeFrom] == "B" && ToIndex[i] == 8)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else if (lastFourAlignment[edgeFrom] == "R" && ToIndex[i] == 11)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else
+                                {
+                                    newOrientation[ToIndex[i]] = 1;
+                                }
+
+                                //if (move[0] == 'F')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "R";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "B";
+                                //}
+                            }
+                            else if (edgeFrom == 11)
+                            {
+                                if (lastFourAlignment[edgeFrom] == "B" && ToIndex[i] == 9)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else if (lastFourAlignment[edgeFrom] == "L" && ToIndex[i] == 10)
+                                {
+                                    newOrientation[ToIndex[i]] = 0;
+                                }
+                                else
+                                {
+                                    newOrientation[ToIndex[i]] = 1;
+                                }
+
+                                //if (move[0] == 'F')
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "L";
+                                //}
+                                //else
+                                //{
+                                //    lastFourAlignment[edgeFrom] = "B";
+                                //}
+                            }
+                        }
+                    }
                 }
             }
-            return null;
+            return newOrientation;
         }
         else
         {
             Debug.LogError("Move is null or empty.");
             return null;
         }
-            
-    }
 
-    private static List<int> GetUorDEdgeOrientaionChange(List<int> permutation, List<int> orientation, Dictionary<int, string> alignment, string move, int[] ToIndex, int[] FromIndex)
+    }
+    private static List<int> GetUorDEdgeOrientaionChange(
+        List<int> permutation, 
+        List<int> orientation, 
+        Dictionary<int, string> lastFourAlignment, 
+        Dictionary<int, string> firstEightAlignment, 
+        string move, int[] ToIndex, int[] FromIndex
+        )
     {
         List<int> newOrientation = new List<int>(orientation);
         for (int i = 0; i < 4; i++)
@@ -250,7 +535,7 @@ public class MoveProcessor : MonoBehaviour
                         int edgeIndex = permutation[FromIndex[i]];
                         if (edgeIndex == 8 || edgeIndex == 10)
                         {
-                            if (alignment[edgeIndex] == "R")
+                            if (lastFourAlignment[edgeIndex] == "R")
                             {
                                 newOrientation[ToIndex[i]] = 0;
                             }
@@ -269,7 +554,7 @@ public class MoveProcessor : MonoBehaviour
                         int edgeIndex = permutation[FromIndex[i]];
                         if (edgeIndex == 9 || edgeIndex == 11)
                         {
-                            if (alignment[edgeIndex] == "L")
+                            if (lastFourAlignment[edgeIndex] == "L")
                             {
                                 newOrientation[ToIndex[i]] = 0;
                             }
@@ -288,7 +573,7 @@ public class MoveProcessor : MonoBehaviour
                         int edgeIndex = permutation[FromIndex[i]];
                         if (edgeIndex == 10 || edgeIndex == 11)
                         {
-                            if (alignment[edgeIndex] == "B")
+                            if (lastFourAlignment[edgeIndex] == "B")
                             {
                                 newOrientation[ToIndex[i]] = 0;
                             }
@@ -307,7 +592,7 @@ public class MoveProcessor : MonoBehaviour
                         int edgeIndex = permutation[FromIndex[i]];
                         if (edgeIndex == 8 || edgeIndex == 9)
                         {
-                            if (alignment[edgeIndex] == "F")
+                            if (lastFourAlignment[edgeIndex] == "F")
                             {
                                 newOrientation[ToIndex[i]] = 0;
                             }

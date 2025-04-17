@@ -16,7 +16,8 @@ public class CubeStateData
     public List<int> lastFourEdgeOrientation; //how each corner of the first 4 is flipped (0,1)
     public List<int> fullEdgePermutation; //where each edge is(0-11) - all edges in the cube
     public List<int> fullEdgeOrientation; //where each edge is(0-11) - all edges in the cube
-    public Dictionary<int, string> lastFourEdgeAlingment; // stores the last four edges alignment with the cube sides(mom-white/yellow)
+    public Dictionary<int, string> lastFourEdgeAlignment; // stores the last four edges alignment with the cube sides(mom-white/yellow)
+    public Dictionary<int, string> firstEightEdgesAlignment; // stores the first eight edges alignment with the cube sides(white/yellow)
     public int depth; //precomputed solving depth
     public List<string> solution; //stores mvoe sequence 
 }
@@ -48,6 +49,17 @@ public class CubeState : MonoBehaviour
         { 10, "None" },
         { 11, "None" }
     }; // stores the last four edges alignment with the cube sides(mom-white/yellow)
+    public Dictionary<int, string> FirstEightEdgesAlingment = new Dictionary<int, string>()
+    {
+        { 0, "None" },
+        { 1, "None" },
+        { 2, "None" },
+        { 3, "None" },
+        { 4, "None" },
+        { 5, "None" },
+        { 6, "None" },
+        { 7, "None" }
+    }; // stores the first eight edges alignment with the cube sides(white/yellow)
 
 
 
@@ -63,7 +75,8 @@ public class CubeState : MonoBehaviour
             lastFourEdgeOrientation = GetLastFourEdgeOrientation(),
             fullEdgePermutation = GetFullEdgePermutation(),
             fullEdgeOrientation = GetFullEdgeOrientation(),
-            lastFourEdgeAlingment = LastFourEdgesAlingment,
+            lastFourEdgeAlignment = LastFourEdgesAlingment,
+            firstEightEdgesAlignment = FirstEightEdgesAlingment,
             depth = 0
         };
         return stateData;
@@ -197,10 +210,12 @@ public class CubeState : MonoBehaviour
     {
         if (edgeName[0] == 'U' && stickerHit == "Up" && sideAligned == "Up") //if piece with yellow sticker aligns ONLY with yellow side
         {
+            FirstEightEdgesAlingment[edgeIndices[edgeName]] = "U";
             return 0;
         }
         else if(edgeName[0] == 'D' && stickerHit == "Down" && sideAligned == "Down") //if piece with white sticker aligns ONLY with white side
         {
+            FirstEightEdgesAlingment[edgeIndices[edgeName]] = "D";
             return 0;
         }
         //For pieces FR, FL, BR and BL:
@@ -220,9 +235,12 @@ public class CubeState : MonoBehaviour
             }
             else
             {
-                LastFourEdgesAlingment[edgeIndices[edgeName]] = "None";
+                LastFourEdgesAlingment[edgeIndices[edgeName]] = LastFourEdgesAlingment[edgeIndices[edgeName]];
             }
-            //Debug.Log(edgeIndices[edgeName] + " -> " + LastFourEdgesAlingment[edgeIndices[edgeName]]);
+            if(edgeName == "BL")
+            {
+                Debug.Log(edgeIndices["BL"] + " -> " + LastFourEdgesAlingment[edgeIndices["BL"]]);
+            }
             //----------------------------------------------------------------------------------
             //=>
 
@@ -235,6 +253,22 @@ public class CubeState : MonoBehaviour
                 return 0;
             }
         }
+
+        //-------Block of code for white/yellow edges for their alignment info-------
+        else if (edgeName[0] == 'U' || edgeName[0] == 'D')
+        {
+            if (stickerHit[0] == 'U' || stickerHit[0] == 'D')
+            {
+                FirstEightEdgesAlingment[edgeIndices[edgeName]] = sideAligned[0].ToString();
+            }
+            else
+            {
+                FirstEightEdgesAlingment[edgeIndices[edgeName]] = secondSideAligned[0].ToString();
+            }
+            //Debug.Log(edgeIndices[edgeName] + " -> " + FirstEightEdgesAlingment[edgeIndices[edgeName]]);
+        }
+
+
         return 1;
     }
 

@@ -272,26 +272,26 @@ public class ReadCube : MonoBehaviour
         stickerHit = cubeState.front[5].name;
         secondStickerHit = cubeState.right[3].name;
         secondSideAligned = "R";
-        edgeGroupedOrientation[8] = cubeState.CalculateEdgeOrientation(edgeNames[8], stickerHit, sideAligned, "R", cubeState.right[3].name);
+        edgeGroupedOrientation[8] = cubeState.CalculateEdgeOrientation(edgeNames[8], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[9] = cubeState.front[3].transform.parent.name;  // FL
         stickerHit = cubeState.front[3].name;
         secondStickerHit = cubeState.left[5].name;
         secondSideAligned = "L";
-        edgeGroupedOrientation[9] = cubeState.CalculateEdgeOrientation(edgeNames[9], stickerHit, sideAligned, "L", cubeState.left[5].name);
+        edgeGroupedOrientation[9] = cubeState.CalculateEdgeOrientation(edgeNames[9], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         sideAligned = "Back";
         edgeNames[10] = cubeState.back[3].transform.parent.name;  // BR
         stickerHit = cubeState.back[3].name;
         secondStickerHit = cubeState.right[5].name;
         secondSideAligned = "R";
-        edgeGroupedOrientation[10] = cubeState.CalculateEdgeOrientation(edgeNames[10], stickerHit, sideAligned, "R", cubeState.right[5].name);
+        edgeGroupedOrientation[10] = cubeState.CalculateEdgeOrientation(edgeNames[10], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         edgeNames[11] = cubeState.back[5].transform.parent.name;  // BL
         stickerHit = cubeState.back[5].name;
-        secondStickerHit = cubeState.back[3].name;
+        secondStickerHit = cubeState.left[3].name;
         secondSideAligned = "L";
-        edgeGroupedOrientation[11] = cubeState.CalculateEdgeOrientation(edgeNames[11], stickerHit, sideAligned, "L", cubeState.left[3].name);
+        edgeGroupedOrientation[11] = cubeState.CalculateEdgeOrientation(edgeNames[11], stickerHit, sideAligned, secondSideAligned, secondStickerHit);
 
         //Saves the full edge premutation list
         List<int> fullEdgePermutation = new List<int>();
@@ -323,7 +323,7 @@ public class ReadCube : MonoBehaviour
         //Debug.Log("Edge 8 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgeOrientation) + "]");
         //Debug.Log("Edge 4 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgeOrientation) + "]");
 
-        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "D2");
+        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "B2");
 
     }
 }
