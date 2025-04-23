@@ -200,9 +200,9 @@ public class ReadCube : MonoBehaviour
             {"DR", 4}, {"DL", 5}, {"DB", 6}, {"DF", 7},
             {"FR", 8}, {"FL", 9}, {"BR", 10}, {"BL", 11}
         };
-    //Get 12 edges of the cube and divide into two 8 and 4-item arrays
-    //in location order
-    List<string> firstEightEdges = new List<string>();
+        //Get 12 edges of the cube and divide into two 8 and 4-item arrays
+        //in location order
+        List<string> firstEightEdges = new List<string>();
         List<string> lastFourEdges = new List<string>();
         List<int> firstEightEdgesOrientation = new List<int>();
         List<int> lastFourEdgesOrientation = new List<int>();
@@ -306,24 +306,25 @@ public class ReadCube : MonoBehaviour
 
         //Pass the orientation of the edges to CubeState
         cubeState.fullEdgesOrientation = edgeGroupedOrientation;
-
+        
 
 
         //update the map with the found positions
         cubeMap.Set();
 
 
-
-        //Debug.Log("Corner Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerPermutation) + "]");
-        //Debug.Log("Corner Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerOrientation) + "]");
+        //Log the current state of the cube
+        Debug.Log("Corner Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerPermutation) + "]");
+        Debug.Log("Corner Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().cornerOrientation) + "]");
         Debug.Log("Edge 12 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().fullEdgePermutation) + "]");
         Debug.Log("Edge 12 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().fullEdgeOrientation) + "]");
-        //Debug.Log("Edge 8 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgePermutation) + "]");
-        //Debug.Log("Edge 4 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgePermutation) + "]");
-        //Debug.Log("Edge 8 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgeOrientation) + "]");
-        //Debug.Log("Edge 4 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgeOrientation) + "]");
 
-        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "B2");
+        Debug.Log("Edge 8 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgePermutation) + "]");
+        Debug.Log("Edge 4 Permutation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgePermutation) + "]");
+        Debug.Log("Edge 8 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().firstEightEdgeOrientation) + "]");
+        Debug.Log("Edge 4 Orientation: [" + string.Join(", ", cubeState.GetCubeStateData().lastFourEdgeOrientation) + "]");
+
+        MoveProcessor.ApplyMove(cubeState.GetCubeStateData(), "R");
 
     }
 }

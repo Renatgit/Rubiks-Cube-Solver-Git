@@ -51,14 +51,14 @@ public class CubeState : MonoBehaviour
     }; // stores the last four edges alignment with the cube sides(mom-white/yellow)
     public Dictionary<int, string> FirstEightEdgesAlingment = new Dictionary<int, string>()
     {
-        { 0, "None" },
-        { 1, "None" },
-        { 2, "None" },
-        { 3, "None" },
-        { 4, "None" },
-        { 5, "None" },
-        { 6, "None" },
-        { 7, "None" }
+        { 0, "U" },
+        { 1, "U" },
+        { 2, "U" },
+        { 3, "U" },
+        { 4, "D" },
+        { 5, "D" },
+        { 6, "D" },
+        { 7, "D" }
     }; // stores the first eight edges alignment with the cube sides(white/yellow)
 
 
@@ -237,10 +237,10 @@ public class CubeState : MonoBehaviour
             {
                 LastFourEdgesAlingment[edgeIndices[edgeName]] = LastFourEdgesAlingment[edgeIndices[edgeName]];
             }
-            if(edgeName == "BL")
-            {
-                Debug.Log(edgeIndices["BL"] + " -> " + LastFourEdgesAlingment[edgeIndices["BL"]]);
-            }
+            //if(edgeName == "BL")
+            //{
+            //    Debug.Log(edgeIndices["BL"] + " -> " + LastFourEdgesAlingment[edgeIndices["BL"]]);
+            //}
             //----------------------------------------------------------------------------------
             //=>
 

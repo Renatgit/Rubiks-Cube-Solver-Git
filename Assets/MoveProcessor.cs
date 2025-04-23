@@ -257,12 +257,148 @@ public class MoveProcessor : MonoBehaviour
                         else
                         {
                             newOrientation[ToIndex[i]] = 0;
-                            //firstEightAlignment[edgeFrom] = "U";
+                            firstEightAlignment[edgeFrom] = "U"; 
                         }
                     }
                     else
                     {
                         newOrientation[ToIndex[i]] = 1;
+
+                        if (orientation[FromIndex[i]] == 0) //if the orientation of the edge 0-3 is 0
+                        {
+                            //Alignment change of yellow edges
+                            if (FromIndex[i] == 0)
+                            {
+                                if (move == "R")
+                                {
+                                    firstEightAlignment[edgeFrom] = "B";
+                                }
+                                else if (move == "R'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "F";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "D";
+                                }
+                            }
+                            else if (FromIndex[i] == 1)
+                            {
+                                if (move == "L")
+                                {
+                                    firstEightAlignment[edgeFrom] = "F";
+                                }
+                                else if (move == "L'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "B";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "D";
+                                }
+                            }
+                            else if (FromIndex[i] == 2)
+                            {
+                                if (move == "B")
+                                {
+                                    firstEightAlignment[edgeFrom] = "L";
+                                }
+                                else if (move == "B'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "R";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "D";
+                                }
+                            }
+                            else if (FromIndex[i] == 3)
+                            {
+                                if (move == "F")
+                                {
+                                    firstEightAlignment[edgeFrom] = "R";
+                                }
+                                else if (move == "F'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "L";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "D";
+                                }
+                            }
+                        }
+                        else if (orientation[FromIndex[i]] == 1)
+                        {
+                            if (firstEightAlignment[edgeFrom] == "D")
+                            {
+                                if (FromIndex[i] == 4)
+                                {
+                                    if (move == "R")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "F";
+                                    }
+                                    else if (move == "R'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "B";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "U";
+                                    }
+                                }
+                                else if (FromIndex[i] == 5)
+                                {
+                                    if (move == "L")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "B";
+                                    }
+                                    else if (move == "L'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "F";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "U";
+                                    }
+                                }
+                                else if (FromIndex[i] == 6)
+                                {
+                                    if (move == "B")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "R";
+                                    }
+                                    else if (move == "B'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "L";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "U";
+                                    }
+                                }
+                                else if (FromIndex[i] == 7)
+                                {
+                                    if (move == "F")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "L";
+                                    }
+                                    else if (move == "F'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "R";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "U";
+                                    }
+                                }
+                            }
+                            else if (firstEightAlignment[edgeFrom] != move[0].ToString())
+                            {
+                                firstEightAlignment[edgeFrom] = "D";
+                            }
+                        }
+                        
                     }
                 }
                 else if (downSidePosiions.Contains(edgeFrom)) //if the affected edge is one of the white edges
@@ -276,11 +412,147 @@ public class MoveProcessor : MonoBehaviour
                         else
                         {
                             newOrientation[ToIndex[i]] = 0;
+                            firstEightAlignment[edgeFrom] = "D"; 
                         }
                     }
                     else
                     {
                         newOrientation[ToIndex[i]] = 1;
+
+                        //Alignment change of white edges with orientation 0
+                        if (orientation[FromIndex[i]] == 0)
+                        {
+                            if (FromIndex[i] == 4)
+                            {
+                                if (move == "R")
+                                {
+                                    firstEightAlignment[edgeFrom] = "F";
+                                }
+                                else if (move == "R'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "B";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "U";
+                                }
+                            }
+                            else if (FromIndex[i] == 5)
+                            {
+                                if (move == "L")
+                                {
+                                    firstEightAlignment[edgeFrom] = "B";
+                                }
+                                else if (move == "L'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "F";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "U";
+                                }
+                            }
+                            else if (FromIndex[i] == 6)
+                            {
+                                if (move == "B")
+                                {
+                                    firstEightAlignment[edgeFrom] = "R";
+                                }
+                                else if (move == "B'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "L";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "U";
+                                }
+                            }
+                            else if (FromIndex[i] == 7)
+                            {
+                                if (move == "F")
+                                {
+                                    firstEightAlignment[edgeFrom] = "L";
+                                }
+                                else if (move == "F'")
+                                {
+                                    firstEightAlignment[edgeFrom] = "R";
+                                }
+                                else
+                                {
+                                    firstEightAlignment[edgeFrom] = "U";
+                                }
+                            }
+                        }
+                        else if (orientation[FromIndex[i]] == 1)
+                        {
+                            if (firstEightAlignment[edgeFrom] == "U")
+                            {
+                                if (FromIndex[i] == 0)
+                                {
+                                    if (move == "R")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "B";
+                                    }
+                                    else if (move == "R'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "F";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "D";
+                                    }
+                                }
+                                else if (FromIndex[i] == 1)
+                                {
+                                    if (move == "L")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "F";
+                                    }
+                                    else if (move == "L'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "B";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "D";
+                                    }
+                                }
+                                else if (FromIndex[i] == 2)
+                                {
+                                    if (move == "B")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "L";
+                                    }
+                                    else if (move == "B'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "R";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "D";
+                                    }
+                                }
+                                else if (FromIndex[i] == 3)
+                                {
+                                    if (move == "F")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "R";
+                                    }
+                                    else if (move == "F'")
+                                    {
+                                        firstEightAlignment[edgeFrom] = "L";
+                                    }
+                                    else
+                                    {
+                                        firstEightAlignment[edgeFrom] = "D";
+                                    }
+                                }
+                            }
+                            else if (firstEightAlignment[edgeFrom] != move[0].ToString())
+                            {
+                                firstEightAlignment[edgeFrom] = "U";
+                            }
+                        }
                     }
                 }
                 else if (edgeFrom >= 8) //non-yellow/non-white edges
@@ -297,47 +569,47 @@ public class MoveProcessor : MonoBehaviour
                             newOrientation[ToIndex[i]] = 1;
                             if (edgeFrom == 8)
                             {
-                                //if (move[0] == 'B')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "F";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "R";
-                                //}
+                                if (move[0] == 'B')
+                                {
+                                    lastFourAlignment[edgeFrom] = "F";
+                                }
+                                else
+                                {
+                                    lastFourAlignment[edgeFrom] = "R";
+                                }
                             }
                             if (edgeFrom == 9)
                             {
-                                //if (move[0] == 'B')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "F";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "L";
-                                //}
+                                if (move[0] == 'B')
+                                {
+                                    lastFourAlignment[edgeFrom] = "F";
+                                }
+                                else
+                                {
+                                    lastFourAlignment[edgeFrom] = "L";
+                                }
                             }
                             if (edgeFrom == 10)
                             {
-                                //if (move[0] == 'F')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "B";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "R";
-                                //}
+                                if (move[0] == 'F')
+                                {
+                                    lastFourAlignment[edgeFrom] = "B";
+                                }
+                                else
+                                {
+                                    lastFourAlignment[edgeFrom] = "R";
+                                }
                             }
                             if (edgeFrom == 11)
                             {
-                                //if (move[0] == 'F')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "B";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "L";
-                                //}
+                                if (move[0] == 'F')
+                                {
+                                    lastFourAlignment[edgeFrom] = "B";
+                                }
+                                else
+                                {
+                                    lastFourAlignment[edgeFrom] = "L";
+                                }
                             }
                         }
                     }
@@ -348,47 +620,23 @@ public class MoveProcessor : MonoBehaviour
                             newOrientation[ToIndex[i]] = 1;
                             if (edgeFrom == 8)
                             {
-                                //if (move[0] == 'F')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "R";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "F";
-                                //}
+                                if (move[0] == 'F')
+                                {
+                                    lastFourAlignment[edgeFrom] = "R";
+                                }
+                                else
+                                {
+                                    lastFourAlignment[edgeFrom] = "F";
+                                }
                             }
                             else if (edgeFrom == 9)
                             {
-                                //if (move[0] == 'F')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "L";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "F";
-                                //}
                             }
                             else if (edgeFrom == 10)
                             {
-                                //if (move[0] == 'B')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "R";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "B";
-                                //}
                             }
                             else if (edgeFrom == 11)
                             {
-                                //if (move[0] == 'B')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "L";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "B";
-                                //}
                             }
                         }
                         else //if the edge IS NOT between two sides of its colours
@@ -406,16 +654,30 @@ public class MoveProcessor : MonoBehaviour
                                 else
                                 {
                                     newOrientation[ToIndex[i]] = 1;
-                                }
+                                    if (move[0] == 'L')
+                                    {
+                                        if (lastFourAlignment[edgeFrom] == "R" && (FromIndex[i] == 9 || FromIndex[i] == 11))
+                                        {
+                                            lastFourAlignment[edgeFrom] = "F";
+                                        }
+                                        else
+                                        {
+                                            lastFourAlignment[edgeFrom] = "R";
+                                        }
+                                    }
+                                    else if (move[0] == 'B')
+                                    {
+                                        if (lastFourAlignment[edgeFrom] == "F" && (FromIndex[i] == 10 || FromIndex[i] == 11))
+                                        {
+                                            lastFourAlignment[edgeFrom] = "R";
+                                        }
+                                        else
+                                        {
+                                            lastFourAlignment[edgeFrom] = "F";
+                                        }
+                                    }
 
-                                //if (move[0] == 'B')
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "R";
-                                //}
-                                //else
-                                //{
-                                //    lastFourAlignment[edgeFrom] = "F";
-                                //}
+                                }
                             }
                             else if (edgeFrom == 9)
                             {
@@ -517,6 +779,27 @@ public class MoveProcessor : MonoBehaviour
             {
                 //set the orientation of the piece in the new position to the orientation of the piece in the old position
                 newOrientation[ToIndex[i]] = orientation[FromIndex[i]];
+
+                if (orientation[FromIndex[i]] == 1) //chages the alignment of the edges when theor orientation 0
+                {
+                    if (ToIndex[i] == 0 || ToIndex[i] == 4)
+                    {
+                        firstEightAlignment[permutation[FromIndex[i]]] = "R";
+                    }
+                    else if (ToIndex[i] == 1 || ToIndex[i] == 5)
+                    {
+                        firstEightAlignment[permutation[FromIndex[i]]] = "L";
+                    }
+                    else if (ToIndex[i] == 2 || ToIndex[i] == 6)
+                    {
+                        firstEightAlignment[permutation[FromIndex[i]]] = "B";
+                    }
+                    else if (ToIndex[i] == 3 || ToIndex[i] == 7)
+                    {
+                        firstEightAlignment[permutation[FromIndex[i]]] = "F";
+                    }
+                }
+
                 continue;
             }
             else

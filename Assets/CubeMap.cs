@@ -18,9 +18,6 @@ public class CubeMap : MonoBehaviour
     public Transform front;
 
 
-
-
-
     // Start is called before the first frame update
     void Start()
     {
