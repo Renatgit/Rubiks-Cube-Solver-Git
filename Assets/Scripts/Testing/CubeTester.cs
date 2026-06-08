@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using Assets.Scripts.Solver;
 
 public class CubeTester : MonoBehaviour
 {
@@ -8,68 +9,33 @@ public class CubeTester : MonoBehaviour
     {
         yield return null;
 
-        CubeState cubeState = FindObjectOfType<CubeState>();
+        CubeStateData scrambled = CubeState.CreateSolvedState();
+        ApplyMoves(scrambled, "R", "U2", "F'", "L'");
 
-        CubeStateData scanned = cubeState.GetCubeStateData();
+        List<string> solution = BFSSolver.Solve(scrambled, 5);
 
-        Debug.Log("SCANNED - Corner permutation: " + string.Join(", ", scanned.cornerPermutation));
-        Debug.Log("SCANNED - Corner orientation: " + string.Join(", ", scanned.cornerOrientation));
-        Debug.Log("SCANNED - Full edge permutation: " + string.Join(", ", scanned.fullEdgePermutation));
-        Debug.Log("SCANNED - Full edge orientation: " + string.Join(", ", scanned.fullEdgeOrientation));
+        Debug.Log("BFS solution found: " + (solution != null));
+        Debug.Log("BFS solution: " + FormatSolution(solution));
 
-        TestReturnsSolved("Logical R + R'", "R", "R'");
-        TestReturnsSolved("Logical L + L'", "L", "L'");
-        TestReturnsSolved("Logical F + F'", "F", "F'");
-        TestReturnsSolved("Logical B + B'", "B", "B'");
+        if (solution != null)
+        {
+            CubeStateData solvedCheck = CubeState.CloneState(scrambled);
+            ApplyMoves(solvedCheck, solution.ToArray());
+
+            Debug.Log("BFS solution solves cube: " + CubeStateUtility.IsSolved(solvedCheck));
+        }
     }
 
-    private void TestCloneDoesNotMutateOriginal()
+    private void ApplyMoves(CubeStateData cube, params string[] moves)
     {
-        CubeStateData solved = CubeState.CreateSolvedState();
-        CubeStateData clone = CubeState.CloneState(solved);
-
-        MoveProcessor.ApplyMove(clone, "R");
-
-        Debug.Log("Clone test - original still solved = " + IsSameState(solved, CubeState.CreateSolvedState()));
-        Debug.Log("Clone test - clone changed = " + !IsSameState(clone, solved));
-    }
-
-    private void TestReturnsSolved(string testName, params string[] moves)
-    {
-        CubeStateData solved = CubeState.CreateSolvedState();
-        CubeStateData cube = CubeState.CreateSolvedState();
-
         foreach (string move in moves)
         {
             MoveProcessor.ApplyMove(cube, move);
         }
-
-        Debug.Log(testName + ": solved = " + IsSameState(cube, solved));
     }
 
-    private bool IsSameState(CubeStateData a, CubeStateData b)
+    private string FormatSolution(List<string> solution)
     {
-        return ListsMatch(a.cornerPermutation, b.cornerPermutation)
-            && ListsMatch(a.cornerOrientation, b.cornerOrientation)
-            && ListsMatch(a.fullEdgePermutation, b.fullEdgePermutation)
-            && ListsMatch(a.fullEdgeOrientation, b.fullEdgeOrientation);
-    }
-
-    private bool ListsMatch(List<int> a, List<int> b)
-    {
-        if (a == null || b == null || a.Count != b.Count)
-        {
-            return false;
-        }
-
-        for (int i = 0; i < a.Count; i++)
-        {
-            if (a[i] != b[i])
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return solution == null ? "null" : string.Join(", ", solution);
     }
 }
