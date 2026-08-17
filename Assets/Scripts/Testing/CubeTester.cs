@@ -2,10 +2,14 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using Assets.Scripts.Core;
+using Assets.Scripts.Solver;
+using Assets.Scripts.Solver.Coordinates;
 
 public class CubeTester : MonoBehaviour
 {
     private const bool RunPruningTestsAutomatically = false;
+    private const bool RunHeuristicTestsAutomatically = false;
+    private const bool RunCornerCoordinateTestsAutomatically = true;
 
     [SerializeField] private bool runMoveRegressionOnStart = false;
     [SerializeField] private bool runMovePruningOnStart = false;
@@ -16,6 +20,16 @@ public class CubeTester : MonoBehaviour
         if (RunPruningTestsAutomatically)
         {
             RunMovePruningTests();
+        }
+
+        if (RunHeuristicTestsAutomatically)
+        {
+            RunHeuristicTests();
+        }
+
+        if (RunCornerCoordinateTestsAutomatically)
+        {
+            RunCornerCoordinateTests();
         }
     }
 
@@ -65,6 +79,81 @@ public class CubeTester : MonoBehaviour
         Debug.Log("CUBE TESTS - Move pruning checks complete.");
     }
 
+    public static void RunHeuristicTests()
+    {
+        CubeStateData solved = CubeState.CreateSolvedState();
+        Debug.Log("CUBE TESTS - Solved heuristic is 0: " + (CubeHeuristic.Estimate(solved) == 0));
+
+        CubeStateData singleMove = CubeState.CreateSolvedState();
+        MoveProcessor.ApplyMove(singleMove, "R", false);
+        Debug.Log("CUBE TESTS - R heuristic is at least 1: " + (CubeHeuristic.Estimate(singleMove) >= 1));
+
+        CubeStateData cancelledMove = CubeState.CreateSolvedState();
+        MoveProcessor.ApplyMove(cancelledMove, "R", false);
+        MoveProcessor.ApplyMove(cancelledMove, "R'", false);
+        Debug.Log("CUBE TESTS - R + R' heuristic is 0: " + (CubeHeuristic.Estimate(cancelledMove) == 0));
+
+        CubeStateData scramble = CubeState.CreateSolvedState();
+        ApplyMovesWithoutHistory(scramble, "R", "U", "F");
+
+        CubeHeuristicBreakdown breakdown = CubeHeuristic.GetBreakdown(scramble);
+        Debug.Log("CUBE TESTS - R U F heuristic estimate: " + breakdown.Estimate
+            + " (misplaced corners=" + breakdown.MisplacedCorners
+            + ", twisted corners=" + breakdown.TwistedCorners
+            + ", misplaced edges=" + breakdown.MisplacedEdges
+            + ", flipped edges=" + breakdown.FlippedEdges + ")");
+
+        Debug.Log("CUBE TESTS - Heuristic checks complete.");
+    }
+
+    public static void RunCornerCoordinateTests()
+    {
+        CubeStateData solved = CubeState.CreateSolvedState();
+
+        Debug.Log("CUBE TESTS - Solved corner orientation index is 0: "
+            + (CornerCoordinate.GetOrientationIndex(solved) == 0));
+
+        Debug.Log("CUBE TESTS - Solved corner permutation index is 0: "
+            + (CornerCoordinate.GetPermutationIndex(solved) == 0));
+
+        Debug.Log("CUBE TESTS - Solved full corner index is 0: "
+            + (CornerCoordinate.GetIndex(solved) == 0));
+
+        CubeStateData rMove = CubeState.CreateSolvedState();
+        MoveProcessor.ApplyMove(rMove, "R", false);
+
+        Debug.Log("CUBE TESTS - R changes corner orientation index: "
+            + (CornerCoordinate.GetOrientationIndex(rMove) != 0));
+
+        Debug.Log("CUBE TESTS - R changes corner permutation index: "
+            + (CornerCoordinate.GetPermutationIndex(rMove) != 0));
+
+        Debug.Log("CUBE TESTS - R changes full corner index: "
+            + (CornerCoordinate.GetIndex(rMove) != 0));
+
+        CubeStateData rThenRPrime = CubeState.CreateSolvedState();
+        ApplyMovesWithoutHistory(rThenRPrime, "R", "R'");
+
+        Debug.Log("CUBE TESTS - R + R' full corner index returns to 0: "
+            + (CornerCoordinate.GetIndex(rThenRPrime) == 0));
+
+        CubeStateData uMove = CubeState.CreateSolvedState();
+        MoveProcessor.ApplyMove(uMove, "U", false);
+
+        Debug.Log("CUBE TESTS - U keeps corner orientation index at 0: "
+            + (CornerCoordinate.GetOrientationIndex(uMove) == 0));
+
+        Debug.Log("CUBE TESTS - U changes corner permutation index: "
+            + (CornerCoordinate.GetPermutationIndex(uMove) != 0));
+
+        TestCornerCoordinateRoundTrip("solved");
+        TestCornerCoordinateRoundTrip("R", "R");
+        TestCornerCoordinateRoundTrip("F", "F");
+        TestCornerCoordinateRoundTrip("R U F", "R", "U", "F");
+
+        Debug.Log("CUBE TESTS - Corner coordinate checks complete.");
+    }
+
     private static void TestMoveAndInverse(string move, string inverseMove)
     {
         CubeStateData cube = CubeState.CreateSolvedState();
@@ -73,6 +162,27 @@ public class CubeTester : MonoBehaviour
         MoveProcessor.ApplyMove(cube, inverseMove);
 
         Debug.Log("CUBE TESTS - " + move + " + " + inverseMove + " solved: " + CubeStateUtility.IsSolved(cube));
+    }
+
+    private static void ApplyMovesWithoutHistory(CubeStateData cube, params string[] moves)
+    {
+        foreach (string move in moves)
+        {
+            MoveProcessor.ApplyMove(cube, move, false);
+        }
+    }
+
+    private static void TestCornerCoordinateRoundTrip(string testName, params string[] moves)
+    {
+        CubeStateData original = CubeState.CreateSolvedState();
+        ApplyMovesWithoutHistory(original, moves);
+
+        int originalIndex = CornerCoordinate.GetIndex(original);
+        CubeStateData restored = CornerCoordinate.GetStateFromIndex(originalIndex);
+        int restoredIndex = CornerCoordinate.GetIndex(restored);
+
+        Debug.Log("CUBE TESTS - Corner coordinate round trip " + testName + ": "
+            + (originalIndex == restoredIndex));
     }
 
     private static void TestMoveCount(string previousMove, int expectedCount)
