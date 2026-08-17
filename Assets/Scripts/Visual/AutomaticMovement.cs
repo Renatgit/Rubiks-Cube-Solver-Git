@@ -1,9 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
-using UnityEngine.EventSystems;
 using RubiksCubeSim;
 
 public class AutomaticMovement : MonoBehaviour
@@ -13,9 +10,11 @@ public class AutomaticMovement : MonoBehaviour
     private TMP_InputField inputField;
     private TMP_Text tmpSeq;
     private TMP_Text tmpShuffleText;
+    private CubeGameController cubeGameController;
 
     public static bool automaticMovementIsActive = false;
     public static bool isAnimating = false;
+    public static string activeMove = null;
 
     public static List<string> currentMovesList = new List<string>() {};
     private static readonly List<string> allMovesList = new List<string>()
@@ -38,10 +37,16 @@ public class AutomaticMovement : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        cubeState = FindObjectOfType<CubeState>();
-        readCube = FindObjectOfType<ReadCube>();
+        activeMove = null;
+        automaticMovementIsActive = false;
+        isAnimating = false;
+        currentMovesList = new List<string>();
 
-        inputField = FindObjectOfType<TMP_InputField>();
+        cubeState = UnityEngine.Object.FindAnyObjectByType<CubeState>();
+        readCube = UnityEngine.Object.FindAnyObjectByType<ReadCube>();
+        cubeGameController = UnityEngine.Object.FindAnyObjectByType<CubeGameController>();
+        inputField = UnityEngine.Object.FindAnyObjectByType<TMP_InputField>();
+
         tmpSeq = GameObject.Find("ShuffleSolveSequence").GetComponent<TMP_Text>();
         tmpShuffleText = GameObject.Find("ShuffleDisplay").GetComponent<TMP_Text>();
 
@@ -75,6 +80,11 @@ public class AutomaticMovement : MonoBehaviour
     //Shuffle() method is called when the user presses the button
     public void Shuffle()
     {
+        if (cubeGameController != null)
+        {
+            cubeGameController.ClearMoveHistory();
+        }
+
         tmpSeq.text = "";
         int numOfMoves = Random.Range(20, 35);
         List<string> createdListOfMoves = new List<string>();
@@ -170,6 +180,7 @@ public class AutomaticMovement : MonoBehaviour
     //Does each move in the currentMoveList
     void OnEachMoveDo(string move)
     {
+        activeMove = move;
         automaticMovementIsActive = true;
         //do an automatic move depending on the notation letter
         switch (move)

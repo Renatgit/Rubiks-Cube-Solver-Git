@@ -48,9 +48,7 @@ public static class CubeStateUtility
         return "cornerPermutation=" + ListsMatch(a.cornerPermutation, b.cornerPermutation)
             + ", cornerOrientation=" + ListsMatch(a.cornerOrientation, b.cornerOrientation)
             + ", fullEdgePermutation=" + ListsMatch(a.fullEdgePermutation, b.fullEdgePermutation)
-            + ", fullEdgeOrientation=" + ListsMatch(a.fullEdgeOrientation, b.fullEdgeOrientation)
-            + ", firstEightEdgesAlignment=" + DictionariesMatch(a.firstEightEdgesAlignment, b.firstEightEdgesAlignment)
-            + ", lastFourEdgeAlignment=" + DictionariesMatch(a.lastFourEdgeAlignment, b.lastFourEdgeAlignment);
+            + ", fullEdgeOrientation=" + ListsMatch(a.fullEdgeOrientation, b.fullEdgeOrientation);
     }
 
     private static bool ListsMatch(List<int> a, List<int> b)
@@ -63,24 +61,6 @@ public static class CubeStateUtility
         for (int i = 0; i < a.Count; i++)
         {
             if (a[i] != b[i])
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool DictionariesMatch(Dictionary<int, string> a, Dictionary<int, string> b)
-    {
-        if (a == null || b == null || a.Count != b.Count)
-        {
-            return false;
-        }
-
-        foreach (KeyValuePair<int, string> pair in a)
-        {
-            if (!b.ContainsKey(pair.Key) || b[pair.Key] != pair.Value)
             {
                 return false;
             }

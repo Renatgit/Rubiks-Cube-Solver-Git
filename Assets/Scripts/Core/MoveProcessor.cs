@@ -1,14 +1,6 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
 using RubiksCubeSim;
-using System.IO;
-using Newtonsoft.Json;
-using Unity.VisualScripting;
-using System.Linq;
-public class MoveProcessor : MonoBehaviour
+public static class MoveProcessor
 {
     //MoveMaps maps Rubik's Cube moves to their corresponding MoveData
     //Each MoveData contains:
@@ -18,147 +10,75 @@ public class MoveProcessor : MonoBehaviour
     {
         { "U", new MoveData(
             new int[] {1, 3, 0, 2, 4, 5, 6, 7}, //Corner Permutation Map
-            new int[] {}, 
-            new int[] {}, 
-            new int[] { 2, 3, 1, 0, 4, 5, 6, 7, 8, 9, 10, 11 }, //FullEdgePermutation map
-            new int[] {0, 1, 2, 3},
-            new int[] {2, 3, 1, 0}
+            new int[] { 2, 3, 1, 0, 4, 5, 6, 7, 8, 9, 10, 11 } //FullEdgePermutation map
         ) },
         { "U'", new MoveData( 
             new int[] {2, 0, 3, 1, 4, 5, 6, 7}, 
-            new int[] {}, 
-            new int[] {},
-            new int[] { 3, 2, 0, 1, 4, 5, 6, 7, 8, 9, 10, 11 }, 
-            new int[] {0, 1, 2, 3}, 
-            new int[] { 3, 2, 0, 1 } 
+            new int[] { 3, 2, 0, 1, 4, 5, 6, 7, 8, 9, 10, 11 }
         ) },
         { "U2", new MoveData( 
             new int[] {3, 2, 1, 0, 4, 5, 6, 7}, 
-            new int[] {},
-            new int[] {},
-            new int[] { 1, 0, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11 },
-            new int[] {0, 1, 2, 3},
-            new int[] { 1, 0, 3, 2 }
+            new int[] { 1, 0, 3, 2, 4, 5, 6, 7, 8, 9, 10, 11 }
         ) },
         { "L", new MoveData( 
             new int[] { 0, 5, 2, 1, 4, 7, 6, 3 },
-            new int[] {1, 3, 5, 7},
-            new int[] {3, 7, 1, 5},
-            new int[] { 0, 11, 2, 3, 4, 9, 6, 7, 8, 1, 10, 5 },
-            new int[] {1, 5, 9, 11},
-            new int[] {11, 9, 1, 5}
+            new int[] { 0, 11, 2, 3, 4, 9, 6, 7, 8, 1, 10, 5 }
         ) },
         { "L'", new MoveData(
             new int[] { 0, 3, 2, 7, 4, 1, 6, 5 },
-            new int[] {1, 3, 5, 7},
-            new int[] {5, 1, 7, 3},
-            new int[] { 0, 9, 2, 3, 4, 11, 6, 7, 8, 5, 10, 1 },
-            new int[] {1, 5, 9, 11},
-            new int[] {9, 11, 5, 1}
+            new int[] { 0, 9, 2, 3, 4, 11, 6, 7, 8, 5, 10, 1 }
         ) },
         { "L2", new MoveData(
             new int[] { 0, 7, 2, 5, 4, 3, 6, 1 },
-            new int[] {1, 3, 5, 7},
-            new int[] { 3, 7, 1, 5 },
-            new int[] { 0, 5, 2, 3, 4, 1, 6, 7, 8, 11, 10, 9 },
-            new int[] {1, 5, 9, 11},
-            new int[] {5, 1, 11, 9}
+            new int[] { 0, 5, 2, 3, 4, 1, 6, 7, 8, 11, 10, 9 }
         ) },
         { "R", new MoveData(
             new int[] { 2, 1, 6, 3, 0, 5, 4, 7 },
-            new int[]{ 0, 2, 4, 6 },
-            new int[]{ 4, 0, 6, 2 },
-            new int[] { 8, 1, 2, 3, 10, 5, 6, 7, 4, 9, 0, 11 },
-            new int[] {0, 4, 8, 10},
-            new int[] {8, 10, 4, 0}
+            new int[] { 8, 1, 2, 3, 10, 5, 6, 7, 4, 9, 0, 11 }
         ) },
         { "R'", new MoveData(
             new int[] { 4, 1, 0, 3, 6, 5, 2, 7 },
-            new int[]{ 0, 2, 4, 6 },
-            new int[]{ 2, 6, 0, 4 },
-            new int[] { 10, 1, 2, 3, 8, 5, 6, 7, 0, 9, 4, 11 },
-            new int[] {0, 4, 8, 10},
-            new int[] {10, 8, 0, 4}
+            new int[] { 10, 1, 2, 3, 8, 5, 6, 7, 0, 9, 4, 11 }
         ) },
         { "R2", new MoveData(
             new int[] { 6, 1, 4, 3, 2, 5, 0, 7 },
-            new int[]{ 0, 2, 4, 6 },
-            new int[]{ 4, 0, 6, 2 },
-            new int[] { 4, 1, 2, 3, 0, 5, 6, 7, 10, 9, 8, 11 },
-            new int[] {0, 4, 8, 10},
-            new int[] {4, 0, 10, 8}
+            new int[] { 4, 1, 2, 3, 0, 5, 6, 7, 10, 9, 8, 11 }
         ) },
         { "D", new MoveData(
             new int[] { 0, 1, 2, 3, 6, 4, 7, 5 },
-            new int[] {},
-            new int[] {},
-            new int[] { 0, 1, 2, 3, 7, 6, 4, 5, 8, 9, 10, 11 },
-            new int[] {4, 5, 6, 7},
-            new int[] {7, 6, 4, 5}
+            new int[] { 0, 1, 2, 3, 7, 6, 4, 5, 8, 9, 10, 11 }
         ) },
         { "D'", new MoveData(
             new int[] { 0, 1, 2, 3, 5, 7, 4, 6 },
-            new int[] {},
-            new int[] {},
-            new int[] { 0, 1, 2, 3, 6, 7, 5, 4, 8, 9, 10, 11 },
-            new int[] {4, 5, 6, 7},
-            new int[] {6, 7, 5, 4}
+            new int[] { 0, 1, 2, 3, 6, 7, 5, 4, 8, 9, 10, 11 }
         ) },
         { "D2", new MoveData(
             new int[] { 0, 1, 2, 3, 7, 6, 5, 4 },
-            new int[] {},
-            new int[] {},
-            new int[] { 0, 1, 2, 3, 5, 4, 7, 6, 8, 9, 10, 11 },
-            new int[] {4, 5, 6, 7},
-            new int[] {5, 4, 7, 6}
+            new int[] { 0, 1, 2, 3, 5, 4, 7, 6, 8, 9, 10, 11 }
         ) },
         { "F", new MoveData(
             new int[] { 4, 0, 2, 3, 5, 1, 6, 7 },
-            new int[] {0, 1, 4, 5},
-            new int[] {1, 5, 0, 4},
-            new int[] { 0, 1, 2, 9, 4, 5, 6, 8, 3, 7, 10, 11 },
-            new int[] {3, 7, 8, 9},
-            new int[] {9, 8, 3, 7}
+            new int[] { 0, 1, 2, 9, 4, 5, 6, 8, 3, 7, 10, 11 }
         ) },
         { "F'", new MoveData(
             new int[] { 1, 5, 2, 3, 0, 4, 6, 7 },
-            new int[] {0, 1, 4, 5},
-            new int[] {4, 0, 5, 1},
-            new int[] { 0, 1, 2, 8, 4, 5, 6, 9, 7, 3, 10, 11 },
-            new int[] {3, 7, 8, 9},
-            new int[] {8, 9, 7, 3}
+            new int[] { 0, 1, 2, 8, 4, 5, 6, 9, 7, 3, 10, 11 }
         ) },
         { "F2", new MoveData(
             new int[] { 5, 4, 2, 3, 1, 0, 6, 7 },
-            new int[] {0, 1, 4, 5},
-            new int[] {1, 5, 0, 4},
-            new int[] { 0, 1, 2, 7, 4, 5, 6, 3, 9, 8, 10, 11 },
-            new int[] {3, 7, 8, 9},
-            new int[] {7, 3, 9, 8}
+            new int[] { 0, 1, 2, 7, 4, 5, 6, 3, 9, 8, 10, 11 }
         ) },
         { "B'", new MoveData(
             new int[] { 0, 1, 6, 2, 4, 5, 7, 3 },
-            new int[] {2, 3, 6, 7},
-            new int[] {6, 2, 7, 3},
-            new int[] { 0, 1, 10, 3, 4, 5, 11, 7, 8, 9, 6, 2 },
-            new int[] {2, 6, 10, 11},
-            new int[] {10, 11, 6, 2}
+            new int[] { 0, 1, 10, 3, 4, 5, 11, 7, 8, 9, 6, 2 }
         ) },
         { "B", new MoveData(
             new int[] { 0, 1, 3, 7, 4, 5, 2, 6 },
-            new int[] {2, 3, 6, 7},
-            new int[] {3, 7, 2, 6},
-            new int[] { 0, 1, 11, 3, 4, 5, 10, 7, 8, 9, 2, 6 },
-            new int[] {2, 6, 10, 11},
-            new int[] {11, 10, 2, 6}
+            new int[] { 0, 1, 11, 3, 4, 5, 10, 7, 8, 9, 2, 6 }
         ) },
         { "B2", new MoveData(
             new int[] { 0, 1, 7, 6, 4, 5, 3, 2 },
-            new int[] {2, 3, 6, 7},
-            new int[] { 6, 2, 7, 3 },
-            new int[] { 0, 1, 6, 3, 4, 5, 2, 7, 8, 9, 11, 10 },
-            new int[] {2, 6, 10, 11},
-            new int[] {6, 2, 11, 10}
+            new int[] { 0, 1, 6, 3, 4, 5, 2, 7, 8, 9, 11, 10 }
         ) }
 
     };
@@ -222,18 +142,7 @@ public class MoveProcessor : MonoBehaviour
     };
 
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-    
-    public static void ApplyMove(CubeStateData state, string move)
+    public static void ApplyMove(CubeStateData state, string move, bool recordMoveHistory = true)
     {
         //Updates the CORNER PERMUTATION indexing
         List<int> newCornerPerm = new List<int>(state.cornerPermutation);
@@ -265,11 +174,16 @@ public class MoveProcessor : MonoBehaviour
         UpdateDerivedEdgeState(state);
 
         state.depth += 1;
-        if (state.solution == null)
+        if (!recordMoveHistory)
         {
-            state.solution = new List<string>();
+            return;
         }
-        state.solution.Add(move);
+
+        if (state.moveHistory == null)
+        {
+            state.moveHistory = new List<string>();
+        }
+        state.moveHistory.Add(move);
     }
 
     private static void UpdateDerivedEdgeState(CubeStateData state)

@@ -1,5 +1,3 @@
-﻿using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 
 namespace Assets.Scripts.Core
@@ -16,18 +14,47 @@ namespace Assets.Scripts.Core
             "B", "B'", "B2"
         };
 
-        public static List<CubeStateData> GenerateChildren(CubeStateData state)
+        public static List<CubeStateData> GenerateChildren(CubeStateData state, string previousMove = null, bool recordMoveHistory = true)
         {
             List<CubeStateData> children = new List<CubeStateData>();
 
-            foreach (string move in AllMoves)
+            foreach (string move in GetValidMoves(previousMove))
             {
                 CubeStateData child = CubeState.CloneState(state);
-                MoveProcessor.ApplyMove(child, move);
+                MoveProcessor.ApplyMove(child, move, recordMoveHistory);
                 children.Add(child);
             }
 
             return children;
+        }
+
+        public static List<string> GetValidMoves(string previousMove)
+        {
+            List<string> validMoves = new List<string>(AllMoves);
+
+            if (string.IsNullOrEmpty(previousMove))
+            {
+                return validMoves;
+            }
+
+            string previousFace = previousMove[0].ToString();
+
+            validMoves.RemoveAll(move => move.StartsWith(previousFace));
+
+            if (previousFace == "D")
+            {
+                validMoves.RemoveAll(move => move.StartsWith("U"));
+            }
+            else if (previousFace == "L")
+            {
+                validMoves.RemoveAll(move => move.StartsWith("R"));
+            }
+            else if (previousFace == "B")
+            {
+                validMoves.RemoveAll(move => move.StartsWith("F"));
+            }
+
+            return validMoves;
         }
     }
 }

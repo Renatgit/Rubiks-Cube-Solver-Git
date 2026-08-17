@@ -1,46 +1,66 @@
-﻿using UnityEngine;
-using System.Collections;
-using NUnit.Framework;
 using Assets.Scripts.Core;
 using System.Collections.Generic;
+using System.Diagnostics;
+using UnityEngine;
+
 
 namespace Assets.Scripts.Solver
 {
-	public class BFSSolver: MonoBehaviour
+	public static class BFSSolver
 	{
+        private class SearchNode
+        {
+            public CubeStateData State { get; private set; }
+            public List<string> SolutionPath { get; private set; }
+            public string PreviousMove { get; private set; }
+            public int Depth { get; private set; }
+
+            public SearchNode(CubeStateData state, List<string> solutionPath, string previousMove, int depth)
+            {
+                State = state;
+                SolutionPath = solutionPath;
+                PreviousMove = previousMove;
+                Depth = depth;
+            }
+        }
+
 		public static List<string> Solve(CubeStateData startState, int maxDepth)
 		{
-			Queue<CubeStateData> queue = new Queue<CubeStateData>();
+			Queue<SearchNode> queue = new Queue<SearchNode>();
 			HashSet<string> visitedStates = new HashSet<string>();
 
             CubeStateData start = CubeState.CloneState(startState);
-			start.depth = 0;
-			start.solution = new List<string>();
+            SearchNode startNode = new SearchNode(start, new List<string>(), null, 0);
 
-			queue.Enqueue(start);
+			queue.Enqueue(startNode);
 			visitedStates.Add(CubeStateUtility.GetStateKey(start));
 
 			while (queue.Count > 0)
 			{
-				CubeStateData currentState = queue.Dequeue();
-				if (CubeStateUtility.IsSolved(currentState))
+				SearchNode currentNode = queue.Dequeue();
+				if (CubeStateUtility.IsSolved(currentNode.State))
                 {
-                    return currentState.solution;
+                    return currentNode.SolutionPath;
                 }
 
-				if (currentState.depth >= maxDepth)
+				if (currentNode.Depth >= maxDepth)
                 {
                     continue;
                 }
-				
-				List<CubeStateData> children = MoveGenerator.GenerateChildren(currentState);
-                foreach (CubeStateData child in children)
-				{
+
+                foreach (string move in MoveGenerator.GetValidMoves(currentNode.PreviousMove))
+                {
+                    CubeStateData child = CubeState.CloneState(currentNode.State);
+                    MoveProcessor.ApplyMove(child, move, false);
+
                     string childKey = CubeStateUtility.GetStateKey(child);
                     if (!visitedStates.Contains(childKey))
                     {
+                        List<string> childSolutionPath = new List<string>(currentNode.SolutionPath);
+                        childSolutionPath.Add(move);
+
                         visitedStates.Add(childKey);
-                        queue.Enqueue(child);
+                        queue.Enqueue(new SearchNode(child, childSolutionPath, move, currentNode.Depth + 1));
                     }
                 }
             }

@@ -1,7 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using RubiksCubeSim;
 
 public class SelectFace : MonoBehaviour
 {
@@ -12,8 +10,8 @@ public class SelectFace : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        cubeState = FindObjectOfType<CubeState>();
-        readCube = FindObjectOfType<ReadCube>();
+        cubeState = FindAnyObjectByType<CubeState>();
+        readCube = FindAnyObjectByType<ReadCube>();
     }
 
     // Update is called once per frame
@@ -26,7 +24,7 @@ public class SelectFace : MonoBehaviour
                 int indexOfPieceHit = -1;
 
                 //read the current state of the cube
-                readCube.ReadState();
+                readCube.ReadFacesForMap();
 
                 //raycast from the mouse pointer towards the cube to detect if a face is hit
                 RaycastHit hit;

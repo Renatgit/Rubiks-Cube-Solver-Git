@@ -1,8 +1,6 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using RubiksCubeSim;
 
 public class CubeMap : MonoBehaviour
 {
@@ -33,7 +31,7 @@ public class CubeMap : MonoBehaviour
     //Sets the CubeMap to the updated state
     public void Set()
     {
-        cubeState = FindObjectOfType<CubeState>();
+        cubeState = FindAnyObjectByType<CubeState>();
 
         UpdateMap(cubeState.front, front);
         UpdateMap(cubeState.back, back);

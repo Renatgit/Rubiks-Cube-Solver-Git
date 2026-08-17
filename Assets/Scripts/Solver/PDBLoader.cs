@@ -1,29 +1,12 @@
-﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.UI;
-using RubiksCubeSim;
 using System.IO;
-using Newtonsoft.Json;
 [System.Serializable] //make the class JSON-compatible
 
-public class PDBLoader : MonoBehaviour
+public class PDBLoader
 {
     private Dictionary<string, int> cornerPDB = new Dictionary<string, int>();
     private Dictionary<string, int> firstEightEdgesPDB = new Dictionary<string, int>();
     private Dictionary<string, int> lastFourEdgesPDB = new Dictionary<string, int>();
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
     public void LoadPDB()
     {
         string folderPath = PatternDatabaseManager.GetDatabasePath();

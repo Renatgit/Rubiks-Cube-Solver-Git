@@ -1,8 +1,4 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -18,12 +14,6 @@ public class PatternDatabaseManager : MonoBehaviour
         InitializePatternDatabaseFolder(); //initialises the folder for a pattern database in current directory
         CreateEmptyPatternFiles(20);
         pdbLoader.LoadPDB();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
     }
 
     //Creates the "PatternDatabase" folder inside Assets/ if it doesn't exist
