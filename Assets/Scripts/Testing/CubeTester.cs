@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using Assets.Scripts.Core;
 using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
+using Assets.Scripts.Solver.PatternDatabases;
 
 public class CubeTester : MonoBehaviour
 {
     private const bool RunPruningTestsAutomatically = false;
     private const bool RunHeuristicTestsAutomatically = false;
-    private const bool RunCornerCoordinateTestsAutomatically = true;
+    private const bool RunCornerCoordinateTestsAutomatically = false;
+    private const bool RunCornerPdbTestsAutomatically = true;
 
     [SerializeField] private bool runMoveRegressionOnStart = false;
     [SerializeField] private bool runMovePruningOnStart = false;
@@ -30,6 +32,11 @@ public class CubeTester : MonoBehaviour
         if (RunCornerCoordinateTestsAutomatically)
         {
             RunCornerCoordinateTests();
+        }
+
+        if (RunCornerPdbTestsAutomatically)
+        {
+            RunCornerPdbTests();
         }
     }
 
@@ -154,6 +161,19 @@ public class CubeTester : MonoBehaviour
         Debug.Log("CUBE TESTS - Corner coordinate checks complete.");
     }
 
+    public static void RunCornerPdbTests()
+    {
+        byte[] cornerPdb = CornerPDB.GenerateArray(3);
+
+        TestCornerPdbDepth(cornerPdb, "solved", 0);
+        TestCornerPdbDepth(cornerPdb, "R", 1, "R");
+        TestCornerPdbMaxDepth(cornerPdb, "R U", 2, "R", "U");
+        TestCornerPdbMaxDepth(cornerPdb, "R U F", 3, "R", "U", "F");
+
+        Debug.Log("CUBE TESTS - Tiny corner PDB visited states: " + CornerPDB.CountVisited(cornerPdb));
+        Debug.Log("CUBE TESTS - Tiny corner PDB checks complete.");
+    }
+
     private static void TestMoveAndInverse(string move, string inverseMove)
     {
         CubeStateData cube = CubeState.CreateSolvedState();
@@ -183,6 +203,30 @@ public class CubeTester : MonoBehaviour
 
         Debug.Log("CUBE TESTS - Corner coordinate round trip " + testName + ": "
             + (originalIndex == restoredIndex));
+    }
+
+    private static void TestCornerPdbDepth(byte[] cornerPdb, string testName, byte expectedDepth, params string[] moves)
+    {
+        CubeStateData state = CubeState.CreateSolvedState();
+        ApplyMovesWithoutHistory(state, moves);
+
+        int index = CornerCoordinate.GetIndex(state);
+        byte actualDepth = cornerPdb[index];
+
+        Debug.Log("CUBE TESTS - Tiny corner PDB " + testName + " depth is " + expectedDepth + ": "
+            + (actualDepth == expectedDepth));
+    }
+
+    private static void TestCornerPdbMaxDepth(byte[] cornerPdb, string testName, byte maxExpectedDepth, params string[] moves)
+    {
+        CubeStateData state = CubeState.CreateSolvedState();
+        ApplyMovesWithoutHistory(state, moves);
+
+        int index = CornerCoordinate.GetIndex(state);
+        byte actualDepth = cornerPdb[index];
+
+        Debug.Log("CUBE TESTS - Tiny corner PDB " + testName + " depth <= " + maxExpectedDepth + ": "
+            + (actualDepth != CornerPDB.Unvisited && actualDepth <= maxExpectedDepth));
     }
 
     private static void TestMoveCount(string previousMove, int expectedCount)
