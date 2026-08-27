@@ -52,6 +52,11 @@ ExportedObj/
 *.pdb.meta
 *.mdb.meta
 
+# Keep Rubik's Cube Pattern Databases
+!Assets/PatternDatabase/
+!Assets/PatternDatabase/*.pdb
+!Assets/PatternDatabase/*.pdb.meta
+
 # Unity3D generated file on crash reports
 sysinfo.txt
 
