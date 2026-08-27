@@ -36,7 +36,7 @@ public class CubeGameController : MonoBehaviour
     {
         CubeStateData stateToSolve = CubeState.CloneState(CurrentState);
         //return BFSSolver.Solve(stateToSolve, maxDepth);
-        return IDDFSSolver.Solve(stateToSolve, maxDepth);
+        return IDAStarSolver.Solve(stateToSolve, maxDepth);
     }
 
     public CubeStateData GetStateCopy()

@@ -20,12 +20,12 @@ namespace Assets.Scripts.Solver.Coordinates
 
         // Encodes the 7 independent corner orientations as a base-3 number
         // The 8th orientation is ignored because it is determined by the rule
-        public static int GetOrientationIndex(CubeStateData state)
+        public static int GetOrientationIndex(int[] orientation)
         {
             int index = 0;
 
             for (int i = 0; i < 7; i++) {  
-                index = (index * 3) + state.cornerOrientation[i];
+                index = (index * 3) + orientation[i];
             }
 
             return index;
@@ -49,7 +49,7 @@ namespace Assets.Scripts.Solver.Coordinates
         }
 
         // // Encodes the 8 corner permutation into a Lehmer Code "rank"
-        public static int GetPermutationIndex(CubeStateData state)
+        public static int GetPermutationIndex(int[] permutation)
         {
             int index = 0;
 
@@ -59,7 +59,7 @@ namespace Assets.Scripts.Solver.Coordinates
                 // Creates the "Code" based on smaller numbers on the right to current number
                 for(int j = i + 1; j < 8; j++)
                 {
-                    if (state.cornerPermutation[j] < state.cornerPermutation[i])
+                    if (permutation[j] < permutation[i])
                     {
                         smallerNumsOnRight++;
                     }
@@ -90,24 +90,12 @@ namespace Assets.Scripts.Solver.Coordinates
         }
 
         // Get full index using formula: permIndex * 2187(3^7) + orientIndex 
-        public static int GetIndex(CubeStateData state)
+        public static int GetIndex(int[] permutation, int[] orientation)
         {
-            int permutationIndex = GetPermutationIndex(state);
-            int orientationIndex = GetOrientationIndex(state);
+            int permutationIndex = GetPermutationIndex(permutation);
+            int orientationIndex = GetOrientationIndex(orientation);
 
             return permutationIndex * CornerOrientationCount + orientationIndex;
-        }
-
-        public static CubeStateData GetStateFromIndex(int index)
-        {
-            int permutationIndex = index / CornerOrientationCount;
-            int orientationIndex = index % CornerOrientationCount;
-
-            CubeStateData state = CubeState.CreateSolvedState();
-            state.cornerPermutation = new List<int>(GetPermutationFromIndex(permutationIndex));
-            state.cornerOrientation = new List<int>(GetOrientationFromIndex(orientationIndex));
-
-            return state;
         }
     }
 }

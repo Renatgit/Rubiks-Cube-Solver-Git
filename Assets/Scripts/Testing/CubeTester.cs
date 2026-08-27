@@ -1,6 +1,5 @@
 using UnityEngine;
-using System.Collections;
-using System.Collections.Generic;
+using System.Linq;
 using Assets.Scripts.Core;
 using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
@@ -8,245 +7,196 @@ using Assets.Scripts.Solver.PatternDatabases;
 
 public class CubeTester : MonoBehaviour
 {
-    private const bool RunPruningTestsAutomatically = false;
-    private const bool RunHeuristicTestsAutomatically = false;
-    private const bool RunCornerCoordinateTestsAutomatically = false;
-    private const bool RunCornerPdbTestsAutomatically = true;
-
-    [SerializeField] private bool runMoveRegressionOnStart = false;
-    [SerializeField] private bool runMovePruningOnStart = false;
+    private const bool RunIDAStarSolveTestsAutomatically = true;
+    private const bool RunCornerPdbSmokeTestAutomatically = false;
+    private const bool RunFullCornerPdbGenerationAutomatically = false;
+    private const int CornerPdbTestDepth = 9;
+    private const int IDAStarTestMaxDepth = 10;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void RunAutomaticTests()
     {
-        if (RunPruningTestsAutomatically)
+        if (RunIDAStarSolveTestsAutomatically)
         {
-            RunMovePruningTests();
+            RunIDAStarSolveTests();
         }
 
-        if (RunHeuristicTestsAutomatically)
+        if (RunCornerPdbSmokeTestAutomatically)
         {
-            RunHeuristicTests();
+            RunCornerPdbSmokeTest();
         }
 
-        if (RunCornerCoordinateTestsAutomatically)
+        if (RunFullCornerPdbGenerationAutomatically)
         {
-            RunCornerCoordinateTests();
-        }
-
-        if (RunCornerPdbTestsAutomatically)
-        {
-            RunCornerPdbTests();
+            GenerateAndSaveFullCornerPdb();
         }
     }
 
-    IEnumerator Start()
+    public static void RunIDAStarSolveTests()
     {
-        yield return null;
+        TestIDAStarScramble("R", "R");
+        TestIDAStarScramble("R U", "R", "U");
+        TestIDAStarScramble("R U F", "R", "U", "F");
+        TestIDAStarScramble("R U2 F' L", "R", "U2", "F'", "L");
+    }
 
-        if (runMoveRegressionOnStart)
+    private static void TestIDAStarScramble(string testName, params string[] scramble)
+    {
+        CubeStateData state = CubeState.CreateSolvedState();
+
+        foreach (string move in scramble)
         {
-            RunMoveRegressionTests();
+            MoveProcessor.ApplyMove(state, move, false);
         }
 
-        if (runMovePruningOnStart)
+        System.Collections.Generic.List<string> solution = IDAStarSolver.Solve(state, IDAStarTestMaxDepth);
+
+        bool solved = false;
+        if (solution != null)
         {
-            RunMovePruningTests();
+            foreach (string move in solution)
+            {
+                MoveProcessor.ApplyMove(state, move, false);
+            }
+
+            solved = CubeStateUtility.IsSolved(state);
+        }
+
+        Debug.Log("CUBE TESTS - IDA* " + testName + " solution found: " + (solution != null));
+        Debug.Log("CUBE TESTS - IDA* " + testName + " solution: "
+            + (solution == null ? "null" : string.Join(", ", solution)));
+        Debug.Log("CUBE TESTS - IDA* " + testName + " solution solves cube: " + solved);
+        LogIDAStarStats();
+    }
+
+    private static void LogIDAStarStats()
+    {
+        IDAStarSearchStats stats = IDAStarSolver.LastSearchStats;
+
+        Debug.Log("CUBE TESTS - IDA* stats initial bound: " + stats.InitialBound);
+        Debug.Log("CUBE TESTS - IDA* stats final bound: " + stats.FinalBound);
+        Debug.Log("CUBE TESTS - IDA* stats bound iterations: " + stats.BoundIterations);
+        Debug.Log("CUBE TESTS - IDA* stats nodes visited: " + stats.NodesVisited);
+        Debug.Log("CUBE TESTS - IDA* stats nodes expanded: " + stats.NodesExpanded);
+        Debug.Log("CUBE TESTS - IDA* stats pruned by heuristic: " + stats.PrunedByHeuristic);
+        Debug.Log("CUBE TESTS - IDA* stats max depth reached: " + stats.MaxDepthReached);
+        Debug.Log("CUBE TESTS - IDA* stats time: " + stats.ElapsedMilliseconds + "ms");
+    }
+
+    public static void RunCornerPdbSmokeTest()
+    {
+        byte[] cornerPdb = CornerPDB.GenerateArray(CornerPdbTestDepth);
+        byte[] loadedPdb = SaveAndLoadCornerPdb(cornerPdb);
+
+        Debug.Log("CUBE TESTS - Corner PDB generated to depth " + CornerPDB.LastGenerationStats.MaxDepth
+            + " in " + CornerPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
+        LogCornerPdbDepthCounts();
+        Debug.Log("CUBE TESTS - Corner PDB solved depth is 0: "
+            + (GetCornerPdbDepth(loadedPdb) == 0));
+        Debug.Log("CUBE TESTS - Corner PDB R depth is 1: "
+            + (GetCornerPdbDepth(loadedPdb, "R") == 1));
+        Debug.Log("CUBE TESTS - Corner PDB R U depth <= 2: "
+            + (GetCornerPdbDepth(loadedPdb, "R", "U") <= 2));
+        Debug.Log("CUBE TESTS - Corner PDB R U F depth <= 3: "
+            + (GetCornerPdbDepth(loadedPdb, "R", "U", "F") <= 3));
+        Debug.Log("CUBE TESTS - Corner PDB save/load visited count matches: "
+            + (CornerPDB.CountVisited(loadedPdb) == CornerPDB.CountVisited(cornerPdb)));
+        Debug.Log("CUBE TESTS - Corner PDB visited states: " + CornerPDB.CountVisited(loadedPdb));
+        Debug.Log("CUBE TESTS - Corner PDB file path: " + GetCornerPdbTestFilePath());
+    }
+
+    public static void GenerateAndSaveFullCornerPdb()
+    {
+        string filePath = GetFullCornerPdbFilePath();
+        string markerPath = GetFullCornerPdbMarkerFilePath();
+
+        WriteGenerationMarker(markerPath, "Full corner PDB generation started");
+
+        byte[] cornerPdb = CornerPDB.GenerateFull();
+
+        WriteGenerationMarker(markerPath, "Full corner PDB generation finished, saving file");
+
+        CornerPDB.Save(cornerPdb, filePath);
+        byte[] loadedPdb = CornerPDB.Load(filePath);
+
+        WriteGenerationMarker(markerPath, "Full corner PDB saved and loaded successfully");
+
+        Debug.Log("CUBE TESTS - Full corner PDB generated in "
+            + CornerPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
+        Debug.Log("CUBE TESTS - Full corner PDB max depth: " + CornerPDB.LastGenerationStats.MaxDepth);
+        LogCornerPdbDepthCounts();
+        Debug.Log("CUBE TESTS - Full corner PDB saved file exists: " + System.IO.File.Exists(filePath));
+        Debug.Log("CUBE TESTS - Full corner PDB loaded length is correct: "
+            + (loadedPdb.Length == CornerPDB.CornerStateCount));
+        Debug.Log("CUBE TESTS - Full corner PDB visited every corner state: "
+            + (CornerPDB.LastGenerationStats.VisitedStates == CornerPDB.CornerStateCount));
+        Debug.Log("CUBE TESTS - Full corner PDB loaded solved depth is 0: "
+            + (GetCornerPdbDepth(loadedPdb) == 0));
+        Debug.Log("CUBE TESTS - Full corner PDB file path: " + filePath);
+
+        System.IO.File.Delete(markerPath);
+    }
+
+    private static byte[] SaveAndLoadCornerPdb(byte[] cornerPdb)
+    {
+        string filePath = GetCornerPdbTestFilePath();
+
+        CornerPDB.Save(cornerPdb, filePath);
+
+        return CornerPDB.Load(filePath);
+    }
+
+    private static void LogCornerPdbDepthCounts()
+    {
+        for (int depth = 0; depth < CornerPDB.LastGenerationStats.DepthCounts.Length; depth++)
+        {
+            Debug.Log("CUBE TESTS - Corner PDB depth " + depth
+                + " new states: " + CornerPDB.LastGenerationStats.DepthCounts[depth]);
         }
     }
 
-    public static void RunMoveRegressionTests()
+    private static string GetCornerPdbTestFilePath()
     {
-        TestMoveAndInverse("R", "R'");
-        TestMoveAndInverse("L", "L'");
-        TestMoveAndInverse("U", "U'");
-        TestMoveAndInverse("D", "D'");
-        TestMoveAndInverse("F", "F'");
-        TestMoveAndInverse("B", "B'");
-
-        Debug.Log("CUBE TESTS - Move regression checks complete.");
+        return Application.dataPath + "/PatternDatabase/corner_test_depth" + CornerPdbTestDepth + ".pdb";
     }
 
-    public static void RunMovePruningTests()
+    private static string GetFullCornerPdbFilePath()
     {
-        TestMoveCount(null, 18);
-        TestBannedFace("R", "R");
-        TestBannedFace("R'", "R");
-        TestBannedFace("R2", "R");
-
-        TestBannedFace("L", "L");
-        TestBannedFace("L", "R");
-
-        TestBannedFace("D", "D");
-        TestBannedFace("D", "U");
-
-        TestBannedFace("B", "B");
-        TestBannedFace("B", "F");
-
-        Debug.Log("CUBE TESTS - Move pruning checks complete.");
+        return Application.dataPath + "/PatternDatabase/corner.pdb";
     }
 
-    public static void RunHeuristicTests()
+    private static string GetFullCornerPdbMarkerFilePath()
     {
-        CubeStateData solved = CubeState.CreateSolvedState();
-        Debug.Log("CUBE TESTS - Solved heuristic is 0: " + (CubeHeuristic.Estimate(solved) == 0));
-
-        CubeStateData singleMove = CubeState.CreateSolvedState();
-        MoveProcessor.ApplyMove(singleMove, "R", false);
-        Debug.Log("CUBE TESTS - R heuristic is at least 1: " + (CubeHeuristic.Estimate(singleMove) >= 1));
-
-        CubeStateData cancelledMove = CubeState.CreateSolvedState();
-        MoveProcessor.ApplyMove(cancelledMove, "R", false);
-        MoveProcessor.ApplyMove(cancelledMove, "R'", false);
-        Debug.Log("CUBE TESTS - R + R' heuristic is 0: " + (CubeHeuristic.Estimate(cancelledMove) == 0));
-
-        CubeStateData scramble = CubeState.CreateSolvedState();
-        ApplyMovesWithoutHistory(scramble, "R", "U", "F");
-
-        CubeHeuristicBreakdown breakdown = CubeHeuristic.GetBreakdown(scramble);
-        Debug.Log("CUBE TESTS - R U F heuristic estimate: " + breakdown.Estimate
-            + " (misplaced corners=" + breakdown.MisplacedCorners
-            + ", twisted corners=" + breakdown.TwistedCorners
-            + ", misplaced edges=" + breakdown.MisplacedEdges
-            + ", flipped edges=" + breakdown.FlippedEdges + ")");
-
-        Debug.Log("CUBE TESTS - Heuristic checks complete.");
+        return Application.dataPath + "/PatternDatabase/corner_generation_in_progress.txt";
     }
 
-    public static void RunCornerCoordinateTests()
+    private static void WriteGenerationMarker(string markerPath, string message)
     {
-        CubeStateData solved = CubeState.CreateSolvedState();
+        string folderPath = System.IO.Path.GetDirectoryName(markerPath);
+        if (!string.IsNullOrEmpty(folderPath))
+        {
+            System.IO.Directory.CreateDirectory(folderPath);
+        }
 
-        Debug.Log("CUBE TESTS - Solved corner orientation index is 0: "
-            + (CornerCoordinate.GetOrientationIndex(solved) == 0));
+        string text = message + "\n"
+            + "Time: " + System.DateTime.Now + "\n"
+            + "Target file: " + GetFullCornerPdbFilePath() + "\n";
 
-        Debug.Log("CUBE TESTS - Solved corner permutation index is 0: "
-            + (CornerCoordinate.GetPermutationIndex(solved) == 0));
-
-        Debug.Log("CUBE TESTS - Solved full corner index is 0: "
-            + (CornerCoordinate.GetIndex(solved) == 0));
-
-        CubeStateData rMove = CubeState.CreateSolvedState();
-        MoveProcessor.ApplyMove(rMove, "R", false);
-
-        Debug.Log("CUBE TESTS - R changes corner orientation index: "
-            + (CornerCoordinate.GetOrientationIndex(rMove) != 0));
-
-        Debug.Log("CUBE TESTS - R changes corner permutation index: "
-            + (CornerCoordinate.GetPermutationIndex(rMove) != 0));
-
-        Debug.Log("CUBE TESTS - R changes full corner index: "
-            + (CornerCoordinate.GetIndex(rMove) != 0));
-
-        CubeStateData rThenRPrime = CubeState.CreateSolvedState();
-        ApplyMovesWithoutHistory(rThenRPrime, "R", "R'");
-
-        Debug.Log("CUBE TESTS - R + R' full corner index returns to 0: "
-            + (CornerCoordinate.GetIndex(rThenRPrime) == 0));
-
-        CubeStateData uMove = CubeState.CreateSolvedState();
-        MoveProcessor.ApplyMove(uMove, "U", false);
-
-        Debug.Log("CUBE TESTS - U keeps corner orientation index at 0: "
-            + (CornerCoordinate.GetOrientationIndex(uMove) == 0));
-
-        Debug.Log("CUBE TESTS - U changes corner permutation index: "
-            + (CornerCoordinate.GetPermutationIndex(uMove) != 0));
-
-        TestCornerCoordinateRoundTrip("solved");
-        TestCornerCoordinateRoundTrip("R", "R");
-        TestCornerCoordinateRoundTrip("F", "F");
-        TestCornerCoordinateRoundTrip("R U F", "R", "U", "F");
-
-        Debug.Log("CUBE TESTS - Corner coordinate checks complete.");
+        System.IO.File.WriteAllText(markerPath, text);
     }
 
-    public static void RunCornerPdbTests()
+    private static byte GetCornerPdbDepth(byte[] cornerPdb, params string[] moves)
     {
-        byte[] cornerPdb = CornerPDB.GenerateArray(3);
+        CubeStateData state = CubeState.CreateSolvedState();
 
-        TestCornerPdbDepth(cornerPdb, "solved", 0);
-        TestCornerPdbDepth(cornerPdb, "R", 1, "R");
-        TestCornerPdbMaxDepth(cornerPdb, "R U", 2, "R", "U");
-        TestCornerPdbMaxDepth(cornerPdb, "R U F", 3, "R", "U", "F");
-
-        Debug.Log("CUBE TESTS - Tiny corner PDB visited states: " + CornerPDB.CountVisited(cornerPdb));
-        Debug.Log("CUBE TESTS - Tiny corner PDB checks complete.");
-    }
-
-    private static void TestMoveAndInverse(string move, string inverseMove)
-    {
-        CubeStateData cube = CubeState.CreateSolvedState();
-
-        MoveProcessor.ApplyMove(cube, move);
-        MoveProcessor.ApplyMove(cube, inverseMove);
-
-        Debug.Log("CUBE TESTS - " + move + " + " + inverseMove + " solved: " + CubeStateUtility.IsSolved(cube));
-    }
-
-    private static void ApplyMovesWithoutHistory(CubeStateData cube, params string[] moves)
-    {
         foreach (string move in moves)
         {
-            MoveProcessor.ApplyMove(cube, move, false);
+            MoveProcessor.ApplyMove(state, move, false);
         }
-    }
 
-    private static void TestCornerCoordinateRoundTrip(string testName, params string[] moves)
-    {
-        CubeStateData original = CubeState.CreateSolvedState();
-        ApplyMovesWithoutHistory(original, moves);
-
-        int originalIndex = CornerCoordinate.GetIndex(original);
-        CubeStateData restored = CornerCoordinate.GetStateFromIndex(originalIndex);
-        int restoredIndex = CornerCoordinate.GetIndex(restored);
-
-        Debug.Log("CUBE TESTS - Corner coordinate round trip " + testName + ": "
-            + (originalIndex == restoredIndex));
-    }
-
-    private static void TestCornerPdbDepth(byte[] cornerPdb, string testName, byte expectedDepth, params string[] moves)
-    {
-        CubeStateData state = CubeState.CreateSolvedState();
-        ApplyMovesWithoutHistory(state, moves);
-
-        int index = CornerCoordinate.GetIndex(state);
-        byte actualDepth = cornerPdb[index];
-
-        Debug.Log("CUBE TESTS - Tiny corner PDB " + testName + " depth is " + expectedDepth + ": "
-            + (actualDepth == expectedDepth));
-    }
-
-    private static void TestCornerPdbMaxDepth(byte[] cornerPdb, string testName, byte maxExpectedDepth, params string[] moves)
-    {
-        CubeStateData state = CubeState.CreateSolvedState();
-        ApplyMovesWithoutHistory(state, moves);
-
-        int index = CornerCoordinate.GetIndex(state);
-        byte actualDepth = cornerPdb[index];
-
-        Debug.Log("CUBE TESTS - Tiny corner PDB " + testName + " depth <= " + maxExpectedDepth + ": "
-            + (actualDepth != CornerPDB.Unvisited && actualDepth <= maxExpectedDepth));
-    }
-
-    private static void TestMoveCount(string previousMove, int expectedCount)
-    {
-        List<string> validMoves = MoveGenerator.GetValidMoves(previousMove);
-        bool countIsCorrect = validMoves.Count == expectedCount;
-
-        Debug.Log("CUBE TESTS - Previous " + FormatMove(previousMove) + " valid move count is " + expectedCount + ": " + countIsCorrect);
-    }
-
-    private static void TestBannedFace(string previousMove, string bannedFace)
-    {
-        List<string> validMoves = MoveGenerator.GetValidMoves(previousMove);
-        bool faceIsBanned = !validMoves.Exists(move => move.StartsWith(bannedFace));
-
-        Debug.Log("CUBE TESTS - Previous " + previousMove + " bans " + bannedFace + " moves: " + faceIsBanned);
-    }
-
-    private static string FormatMove(string move)
-    {
-        return string.IsNullOrEmpty(move) ? "none" : move;
+        int index = CornerCoordinate.GetIndex(
+            state.cornerPermutation.ToArray(),
+            state.cornerOrientation.ToArray());
+        return cornerPdb[index];
     }
 }

@@ -13,25 +13,31 @@ public class SolveButtonController : MonoBehaviour
 
     public void Solve()
     {
-        List<string> solution = cubeGameController.SolveCurrentState(7);
+        List<string> solution = cubeGameController.SolveCurrentState(10);
 
         if (solution == null)
         {
             Debug.Log("No solution found within max depth.");
-            LogIDDFSStats();
+            LogIDAStarStats();
             return;
         }
 
+        Debug.Log("Solution length: " + solution.Count + " moves");
         Debug.Log("Solution: " + string.Join(", ", solution));
-        LogIDDFSStats();
+        LogIDAStarStats();
 
         AutomaticMovement.currentMovesList = new List<string>(solution);
     }
 
-    private void LogIDDFSStats()
+    private void LogIDAStarStats()
     {
-        Debug.Log("IDDFS stats: depth reached = " + IDDFSSolver.LastStats.DepthReached
-            + ", nodes searched = " + IDDFSSolver.LastStats.NodesSearched
-            + ", time = " + IDDFSSolver.LastStats.ElapsedMilliseconds + "ms");
+        IDAStarSearchStats stats = IDAStarSolver.LastSearchStats;
+
+        Debug.Log("IDA* stats: initial bound = " + stats.InitialBound
+            + ", final bound = " + stats.FinalBound
+            + ", bound iterations = " + stats.BoundIterations
+            + ", nodes visited = " + stats.NodesVisited
+            + ", pruned = " + stats.PrunedByHeuristic
+            + ", time = " + stats.ElapsedMilliseconds + "ms");
     }
 }

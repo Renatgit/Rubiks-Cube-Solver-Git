@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Assets.Scripts.Solver.Coordinates;
 using RubiksCubeSim;
 public static class MoveProcessor
 {
@@ -238,5 +239,30 @@ public static class MoveProcessor
             newOrientation[newPosition] = (currentOrientation[oldPosition] + orientationDelta[newPosition]) % 3;
         }
         return newOrientation;
+    }
+
+    // --- Mostly for PDB ---
+    public static int ApplyCornerMoveToIndex(int cornerIndex, string move)
+    {
+        // Derrived from formula: permIndex * 2187 + orientIndex
+        int permutationIndex = cornerIndex / 2187;
+        int orientationIndex = cornerIndex % 2187;
+
+        int[] permutation = CornerCoordinate.GetPermutationFromIndex(permutationIndex);
+        int[] orientation = CornerCoordinate.GetOrientationFromIndex(orientationIndex);
+
+        int[] newPermutation = new int[8];
+        int[] newOrientation = new int[8];
+
+        int[] permutationMap = MoveMaps[move].CornerPermutation;
+        int[] orientationDelta = CornerOrientationDeltas[move];
+
+        for (int oldPosition = 0; oldPosition < 8; oldPosition++)
+        {
+            int newPosition = permutationMap[oldPosition];
+            newPermutation[newPosition] = permutation[oldPosition];
+            newOrientation[newPosition] = (orientation[oldPosition] + orientationDelta[newPosition]) % 3;
+        }
+        return CornerCoordinate.GetIndex(newPermutation, newOrientation);
     }
 }

@@ -151,9 +151,6 @@ public class PivotRotation : MonoBehaviour
                 cubeGameController.CompleteMove(completedMove);
                 AutomaticMovement.activeMove = null;
                 currentMoveIsManual = false;
-
-                Debug.Log("Completed move: " + completedMove);
-                Debug.Log("Current move history: " + string.Join(", ", cubeGameController.CurrentState.moveHistory));
             }
 
             readCube.ReadFacesForMap();
