@@ -1,7 +1,7 @@
+using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
 using Assets.Scripts.Solver.PatternDatabases;
 using System.IO;
-using System.Linq;
 using UnityEngine;
 
 namespace Assets.Scripts.Solver.Heuristics
@@ -21,6 +21,17 @@ namespace Assets.Scripts.Solver.Heuristics
             return cornerPDB[cornerIndex];
         }
 
+        public static int Estimate(SolverStateData state)
+        {
+            LoadIfNeeded();
+
+            int cornerIndex = CornerCoordinate.GetIndex(
+                state.CornerPermutation,
+                state.CornerOrientation);
+
+            return cornerPDB[cornerIndex];
+        }
+
         private static void LoadIfNeeded()
         {
             if (cornerPDB != null)
@@ -36,7 +47,6 @@ namespace Assets.Scripts.Solver.Heuristics
             }
 
             cornerPDB = CornerPDB.Load(filePath);
-            Debug.Log("Corner PDB loaded from " + filePath);
         }
     }
 }

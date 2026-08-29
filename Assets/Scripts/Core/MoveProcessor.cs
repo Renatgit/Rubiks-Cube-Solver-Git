@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
 using RubiksCubeSim;
 public static class MoveProcessor
@@ -187,6 +188,40 @@ public static class MoveProcessor
         state.moveHistory.Add(move);
     }
 
+    public static void ApplyMove(SolverStateData state, string move)
+    {
+        int[] newCornerPermutation = new int[8];
+        int[] newCornerOrientation = new int[8];
+        int[] cornerPermutationMap = MoveMaps[move].CornerPermutation;
+        int[] cornerOrientationDelta = CornerOrientationDeltas[move];
+
+        for (int oldPosition = 0; oldPosition < 8; oldPosition++)
+        {
+            int newPosition = cornerPermutationMap[oldPosition];
+            newCornerPermutation[newPosition] = state.CornerPermutation[oldPosition];
+            newCornerOrientation[newPosition] =
+                (state.CornerOrientation[oldPosition] + cornerOrientationDelta[newPosition]) % 3;
+        }
+
+        int[] newFullEdgePermutation = new int[12];
+        int[] newFullEdgeOrientation = new int[12];
+        int[] edgePermutationMap = MoveMaps[move].FullEdgePermutation;
+        int[] edgeOrientationDelta = EdgeOrientationDeltas[move];
+
+        for (int newPosition = 0; newPosition < 12; newPosition++)
+        {
+            int oldPosition = edgePermutationMap[newPosition];
+            newFullEdgePermutation[newPosition] = state.FullEdgePermutation[oldPosition];
+            newFullEdgeOrientation[newPosition] =
+                (state.FullEdgeOrientation[oldPosition] + edgeOrientationDelta[newPosition]) % 2;
+        }
+
+        state.CornerPermutation = newCornerPermutation;
+        state.CornerOrientation = newCornerOrientation;
+        state.FullEdgePermutation = newFullEdgePermutation;
+        state.FullEdgeOrientation = newFullEdgeOrientation;
+    }
+
     private static void UpdateDerivedEdgeState(CubeStateData state)
     {
         state.firstEightEdgePermutation = new List<int>();
@@ -264,5 +299,55 @@ public static class MoveProcessor
             newOrientation[newPosition] = (orientation[oldPosition] + orientationDelta[newPosition]) % 3;
         }
         return CornerCoordinate.GetIndex(newPermutation, newOrientation);
+    }
+
+    public static int ApplyEdgeGroupMoveToIndex(int edgeGroupIndex, string move, int[] trackedEdges)
+    {
+        EdgeGroupCoordinate.SplitIndex(edgeGroupIndex, out int positionIndex, out int permutationIndex, out int orientationIndex);
+
+        int[] positions = EdgeGroupCoordinate.GetPositionsFromIndex(positionIndex);
+        int[] permutation = EdgeGroupCoordinate.GetPermutationFromIndex(permutationIndex);
+        int[] orientation = EdgeGroupCoordinate.GetOrientationFromIndex(orientationIndex);
+
+        int[] fullPermutation = new int[EdgeGroupCoordinate.EdgeCount];
+        int[] fullOrientation = new int[EdgeGroupCoordinate.EdgeCount];
+
+        for (int i = 0; i < fullPermutation.Length; i++)
+        {
+            fullPermutation[i] = -1;
+        }
+
+        for (int i = 0; i < EdgeGroupCoordinate.TrackedEdgeCount; i++)
+        {
+            int position = positions[i];
+            fullPermutation[position] = trackedEdges[permutation[i]];
+            fullOrientation[position] = orientation[i];
+        }
+
+        int[] newFullPermutation = new int[EdgeGroupCoordinate.EdgeCount];
+        int[] newFullOrientation = new int[EdgeGroupCoordinate.EdgeCount];
+        int[] permutationMap = MoveMaps[move].FullEdgePermutation;
+        int[] orientationDelta = EdgeOrientationDeltas[move];
+
+        for (int i = 0; i < newFullPermutation.Length; i++)
+        {
+            newFullPermutation[i] = -1;
+        }
+
+        for (int newPosition = 0; newPosition < EdgeGroupCoordinate.EdgeCount; newPosition++)
+        {
+            int oldPosition = permutationMap[newPosition];
+            int edge = fullPermutation[oldPosition];
+
+            if (edge == -1)
+            {
+                continue;
+            }
+
+            newFullPermutation[newPosition] = edge;
+            newFullOrientation[newPosition] = (fullOrientation[oldPosition] + orientationDelta[newPosition]) % 2;
+        }
+
+        return EdgeGroupCoordinate.GetIndex(newFullPermutation, newFullOrientation, trackedEdges);
     }
 }

@@ -13,31 +13,32 @@ public class SolveButtonController : MonoBehaviour
 
     public void Solve()
     {
-        List<string> solution = cubeGameController.SolveCurrentState(10);
+        List<string> solution = cubeGameController.SolveCurrentState(13);
 
         if (solution == null)
         {
-            Debug.Log("No solution found within max depth.");
-            LogIDAStarStats();
+            LogSolution(solution, false);
             return;
         }
 
-        Debug.Log("Solution length: " + solution.Count + " moves");
-        Debug.Log("Solution: " + string.Join(", ", solution));
-        LogIDAStarStats();
+        LogSolution(solution, true);
 
         AutomaticMovement.currentMovesList = new List<string>(solution);
     }
 
-    private void LogIDAStarStats()
+    private void LogSolution(List<string> solution, bool solved)
     {
         IDAStarSearchStats stats = IDAStarSolver.LastSearchStats;
+        string solutionText = solution == null ? "null" : string.Join(", ", solution);
+        int solutionLength = solution == null ? -1 : solution.Count;
 
-        Debug.Log("IDA* stats: initial bound = " + stats.InitialBound
-            + ", final bound = " + stats.FinalBound
-            + ", bound iterations = " + stats.BoundIterations
-            + ", nodes visited = " + stats.NodesVisited
-            + ", pruned = " + stats.PrunedByHeuristic
-            + ", time = " + stats.ElapsedMilliseconds + "ms");
+        Debug.Log("IDA* solve"
+            + " | solved: " + solved
+            + " | length: " + solutionLength
+            + " | time: " + stats.ElapsedMilliseconds + "ms"
+            + " | nodes: " + stats.NodesVisited
+            + " | bounds: " + stats.InitialBound + "->" + stats.FinalBound
+            + " | solution: " + solutionText);
     }
+
 }

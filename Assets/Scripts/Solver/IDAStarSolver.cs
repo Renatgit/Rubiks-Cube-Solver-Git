@@ -1,5 +1,6 @@
 using Assets.Scripts.Core;
 using Assets.Scripts.Solver.Heuristics;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -28,9 +29,9 @@ namespace Assets.Scripts.Solver
         public static List<string> Solve(CubeStateData startState, int maxDepth)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
-            CubeStateData start = CubeState.CloneState(startState);
+            SolverStateData start = SolverStateData.FromCubeStateData(startState);
 
-            int bound = CornerPDBHeuristics.Estimate(start);
+            int bound = Estimate(start);
             LastSearchStats = new IDAStarSearchStats
             {
                 InitialBound = bound
@@ -39,7 +40,7 @@ namespace Assets.Scripts.Solver
             while (bound <= maxDepth)
             {
                 List<string> path = new List<string>();
-                HashSet<string> visitedOnPath = new HashSet<string>();
+                HashSet<SolverStateKey> visitedOnPath = new HashSet<SolverStateKey>();
 
                 LastSearchStats.BoundIterations++;
                 LastSearchStats.FinalBound = bound;
@@ -68,7 +69,7 @@ namespace Assets.Scripts.Solver
             return null;
         }
 
-        private static int Search(CubeStateData state, int depth, int bound, string previousMove, List<string> path, HashSet<string> visitedOnPath)
+        private static int Search(SolverStateData state, int depth, int bound, string previousMove, List<string> path, HashSet<SolverStateKey> visitedOnPath)
         {
             LastSearchStats.NodesVisited++;
 
@@ -77,7 +78,7 @@ namespace Assets.Scripts.Solver
                 LastSearchStats.MaxDepthReached = depth;
             }
 
-            int heuristic = CornerPDBHeuristics.Estimate(state);
+            int heuristic = Estimate(state);
             int estimatedTotal = depth + heuristic;
 
             if (estimatedTotal > bound)
@@ -86,13 +87,13 @@ namespace Assets.Scripts.Solver
                 return estimatedTotal;
             }
 
-            if (CubeStateUtility.IsSolved(state))
+            if (SolverStateUtility.IsSolved(state))
             {
                 return Found;
             }
 
             int minNextBound = Infinity;
-            string stateKey = CubeStateUtility.GetStateKey(state);
+            SolverStateKey stateKey = SolverStateKey.FromState(state);
             visitedOnPath.Add(stateKey);
             LastSearchStats.NodesExpanded++;
 
@@ -100,10 +101,10 @@ namespace Assets.Scripts.Solver
             {
                 LastSearchStats.ChildrenGenerated++;
 
-                CubeStateData child = CubeState.CloneState(state);
-                MoveProcessor.ApplyMove(child, move, false);
+                SolverStateData child = state.Clone();
+                MoveProcessor.ApplyMove(child, move);
 
-                string childKey = CubeStateUtility.GetStateKey(child);
+                SolverStateKey childKey = SolverStateKey.FromState(child);
                 if (visitedOnPath.Contains(childKey))
                 {
                     continue;
@@ -128,6 +129,14 @@ namespace Assets.Scripts.Solver
             visitedOnPath.Remove(stateKey);
 
             return minNextBound;
+        }
+
+        private static int Estimate(SolverStateData state)
+        {
+            int cornerEstimate = CornerPDBHeuristics.Estimate(state);
+            int edgeEstimate = EdgeGroupPDBHeuristics.Estimate(state);
+
+            return Math.Max(cornerEstimate, edgeEstimate);
         }
     }
 }
