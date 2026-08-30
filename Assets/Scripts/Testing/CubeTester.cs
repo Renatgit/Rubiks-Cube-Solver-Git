@@ -1,73 +1,115 @@
-using UnityEngine;
 using Assets.Scripts.Core;
 using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
-using Assets.Scripts.Solver.PatternDatabases;
+using Assets.Scripts.Solver.Heuristics;
+using Assets.Scripts.Solver.Phases;
+using System.IO;
+using UnityEngine;
 
 public class CubeTester : MonoBehaviour
 {
-    private const bool RunSolverStateMoveTestAutomatically = false;
-    private const bool RunEdgeGroupPdbSmokeTestAutomatically = false;
-    private const bool RunFullEdgeGroupAPdbGenerationAutomatically = false;
-    private const bool RunFullEdgeGroupBPdbGenerationAutomatically = false;
-    private const bool RunIDAStarSolveTestsAutomatically = false;
-    private const bool RunCornerPdbSmokeTestAutomatically = false;
-    private const bool RunFullCornerPdbGenerationAutomatically = false;
-    private const int EdgeGroupPdbTestDepth = 8;
-    private const int CornerPdbTestDepth = 9; // Off
-    private const int IDAStarTestMaxDepth = 12;
+    private const bool RunRegressionTestsAutomatically = true;
+    private const bool RunPhase1SolverTestAutomatically = false;
+    private const bool RunPhase2MoveTestAutomatically = true;
+    private const int Phase1SolverTestMaxDepth = 12;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void RunAutomaticTests()
     {
-        if (RunSolverStateMoveTestAutomatically)
+        if (RunRegressionTestsAutomatically)
         {
-            RunSolverStateMoveTest();
+            RunRegressionTests();
         }
 
-        if (RunEdgeGroupPdbSmokeTestAutomatically)
+        if (RunPhase1SolverTestAutomatically)
         {
-            RunEdgeGroupPdbSmokeTest();
+            RunPhase1SolverTest();
         }
 
-        if (RunFullEdgeGroupAPdbGenerationAutomatically)
+        if (RunPhase2MoveTestAutomatically)
         {
-            GenerateAndSaveFullEdgeGroupAPdb();
-        }
-
-        if (RunFullEdgeGroupBPdbGenerationAutomatically)
-        {
-            GenerateAndSaveFullEdgeGroupBPdb();
-        }
-
-        if (RunIDAStarSolveTestsAutomatically)
-        {
-            RunIDAStarSolveTests();
-        }
-
-        if (RunCornerPdbSmokeTestAutomatically)
-        {
-            RunCornerPdbSmokeTest();
-        }
-
-        if (RunFullCornerPdbGenerationAutomatically)
-        {
-            GenerateAndSaveFullCornerPdb();
+            RunPhase2MoveTest();
         }
     }
 
-    public static void RunSolverStateMoveTest()
+    public static void RunRegressionTests()
+    {
+        bool coordinatesPass = Phase1CoordinatesWork();
+        bool phase1GoalPass = Phase1GoalWorks();
+        bool solverStatePass = SolverStateMovePipelineWorks();
+        bool phase1PdbPass = Phase1PdbFilesWork();
+
+        Debug.Log("CUBE TESTS - Regression"
+            + " | coordinates: " + coordinatesPass
+            + " | phase1 goal: " + phase1GoalPass
+            + " | solver state moves: " + solverStatePass
+            + " | phase1 PDB files: " + phase1PdbPass
+            + " | passed: " + (coordinatesPass && phase1GoalPass && solverStatePass && phase1PdbPass));
+    }
+
+    public static void RunPhase1SolverTest()
+    {
+        Debug.Log("CUBE TESTS - Phase1Solver test started, max depth " + Phase1SolverTestMaxDepth);
+        TestPhase1SolverScramble(
+            "10-move scramble",
+            "R", "U", "F'", "L2", "D", "B'", "R2", "U'", "F", "D2");
+
+        TestPhase1SolverScramble(
+            "12-move scramble",
+            "R", "F", "U'", "L", "B", "D2", "R'", "F2", "U", "B'", "L2", "D");
+    }
+
+    private static bool Phase1CoordinatesWork()
+    {
+        CubeStateData solvedCube = CubeState.CreateSolvedState();
+        SolverStateData solvedState = SolverStateData.FromCubeStateData(solvedCube);
+
+        int solvedCornerOrientation = Phase1Coordinate.GetCornerOrientationIndex(solvedState);
+        int solvedEdgeOrientation = Phase1Coordinate.GetEdgeOrientationIndex(solvedState);
+        int solvedSlicePosition = Phase1Coordinate.GetSlicePositionIndex(solvedState);
+
+        int[] solvedSlicePositions = Phase1Coordinate.GetSlicePositionsFromIndex(solvedSlicePosition);
+        bool sliceRoundTrip = Phase1Coordinate.GetSlicePositionIndexFromPositions(solvedSlicePositions) == solvedSlicePosition;
+
+        CubeStateData movedCube = CubeState.CreateSolvedState();
+        ApplyMoves(movedCube, "R", "U", "F");
+
+        SolverStateData movedState = SolverStateData.FromCubeStateData(movedCube);
+        int movedEdgeOrientation = Phase1Coordinate.GetEdgeOrientationIndex(movedState);
+        int[] rebuiltEdgeOrientation = Phase1Coordinate.GetEdgeOrientationFromIndex(movedEdgeOrientation);
+
+        bool edgeOrientationRoundTrip = ArraysMatch(movedState.FullEdgeOrientation, rebuiltEdgeOrientation);
+        bool combinedIndexesInRange =
+            Phase1Coordinate.GetCornerSliceIndex(movedState) < Phase1Coordinate.CornerSliceCount
+            && Phase1Coordinate.GetEdgeSliceIndex(movedState) < Phase1Coordinate.EdgeSliceCount;
+
+        return solvedCornerOrientation == 0
+            && solvedEdgeOrientation == 0
+            && sliceRoundTrip
+            && edgeOrientationRoundTrip
+            && combinedIndexesInRange;
+    }
+
+    private static bool Phase1GoalWorks()
+    {
+        return Phase1GoalReached() == true
+            && Phase1GoalReached("U") == true
+            && Phase1GoalReached("U", "D2") == true
+            && Phase1GoalReached("R") == false
+            && Phase1GoalReached("F") == false
+            && Phase1GoalReached("R2") == true
+            && Phase1GoalReached("F2") == true;
+    }
+
+    private static bool SolverStateMovePipelineWorks()
     {
         string[][] testSequences =
         {
             new string[] { "R" },
-            new string[] { "R", "U" },
             new string[] { "R", "U", "F" },
             new string[] { "R", "U2", "F'", "L" },
             new string[] { "B", "D", "R'", "F2", "L", "U" }
         };
-
-        bool allMatch = true;
 
         foreach (string[] sequence in testSequences)
         {
@@ -82,12 +124,119 @@ public class CubeTester : MonoBehaviour
 
             if (!SolverStateMatchesCubeState(solverState, cubeState))
             {
-                allMatch = false;
                 Debug.Log("CUBE TESTS - SolverState mismatch on sequence: " + string.Join(", ", sequence));
+                return false;
             }
         }
 
-        Debug.Log("CUBE TESTS - SolverState move pipeline matches CubeStateData: " + allMatch);
+        return true;
+    }
+
+    private static bool Phase1PdbFilesWork()
+    {
+        Phase1Heuristic.ClearDatabases();
+
+        string cornerSlicePath = Application.dataPath + "/PatternDatabase/phase1_corner_slice.pdb";
+        string edgeSlicePath = Application.dataPath + "/PatternDatabase/phase1_edge_slice.pdb";
+
+        if (!File.Exists(cornerSlicePath) || !File.Exists(edgeSlicePath))
+        {
+            Debug.Log("CUBE TESTS - Phase 1 PDB files missing");
+            return false;
+        }
+
+        int solvedEstimate = Phase1Estimate();
+        int rEstimate = Phase1Estimate("R");
+        int fEstimate = Phase1Estimate("F");
+        int rufEstimate = Phase1Estimate("R", "U", "F");
+
+        return solvedEstimate == 0
+            && rEstimate > 0
+            && fEstimate > 0
+            && rufEstimate > 0;
+    }
+
+    private static void TestPhase1SolverScramble(string testName, params string[] scramble)
+    {
+        CubeStateData state = CubeState.CreateSolvedState();
+        ApplyMoves(state, scramble);
+
+        System.Collections.Generic.List<string> phase1Moves = Phase1Solver.Solve(state, Phase1SolverTestMaxDepth);
+
+        bool reached = false;
+        if (phase1Moves != null)
+        {
+            ApplyMoves(state, phase1Moves.ToArray());
+            reached = Phase1Goal.IsReached(SolverStateData.FromCubeStateData(state));
+        }
+
+        IDAStarSearchStats stats = Phase1Solver.LastSearchStats;
+        string movesText = phase1Moves == null ? "null" : string.Join(", ", phase1Moves);
+        int moveCount = phase1Moves == null ? -1 : phase1Moves.Count;
+
+        Debug.Log("CUBE TESTS - Phase1Solver " + testName
+            + " | reached: " + reached
+            + " | length: " + moveCount
+            + " | time: " + stats.ElapsedMilliseconds + "ms"
+            + " | nodes: " + stats.NodesVisited
+            + " | bounds: " + stats.InitialBound + "->" + stats.FinalBound
+            + " | moves: " + movesText);
+    }
+
+    public static void RunPhase2MoveTest()
+    {
+        CubeStateData phase1Cube = CubeState.CreateSolvedState();
+        ApplyMoves(phase1Cube, "U", "R2", "F2", "D", "L2", "B2");
+
+        bool startInPhase1 = Phase1Goal.IsReached(SolverStateData.FromCubeStateData(phase1Cube));
+        bool allPhase2MovesPreservePhase1 = true;
+
+        foreach (string move in MoveGenerator.GetValidPhase2Moves(null))
+        {
+            CubeStateData child = CubeState.CloneState(phase1Cube);
+            MoveProcessor.ApplyMove(child, move, false);
+
+            if (!Phase1Goal.IsReached(SolverStateData.FromCubeStateData(child)))
+            {
+                allPhase2MovesPreservePhase1 = false;
+                Debug.Log("CUBE TESTS - Phase2 move broke Phase1Goal: " + move);
+            }
+        }
+
+        bool moveCountCorrect = MoveGenerator.GetValidPhase2Moves(null).Count == 10;
+        bool sameFacePruningWorks = MoveGenerator.GetValidPhase2Moves("U").Count == 7
+            && MoveGenerator.GetValidPhase2Moves("R2").Count == 9;
+
+        Debug.Log("CUBE TESTS - Phase2Moves"
+            + " | count 10: " + moveCountCorrect
+            + " | start in phase1: " + startInPhase1
+            + " | preserve phase1: " + allPhase2MovesPreservePhase1
+            + " | pruning: " + sameFacePruningWorks
+            + " | passed: " + (moveCountCorrect && startInPhase1 && allPhase2MovesPreservePhase1 && sameFacePruningWorks));
+    }
+
+    private static bool Phase1GoalReached(params string[] moves)
+    {
+        CubeStateData state = CubeState.CreateSolvedState();
+        ApplyMoves(state, moves);
+
+        return Phase1Goal.IsReached(SolverStateData.FromCubeStateData(state));
+    }
+
+    private static int Phase1Estimate(params string[] moves)
+    {
+        CubeStateData state = CubeState.CreateSolvedState();
+        ApplyMoves(state, moves);
+
+        return Phase1Heuristic.Estimate(SolverStateData.FromCubeStateData(state));
+    }
+
+    private static void ApplyMoves(CubeStateData state, params string[] moves)
+    {
+        foreach (string move in moves)
+        {
+            MoveProcessor.ApplyMove(state, move, false);
+        }
     }
 
     private static bool SolverStateMatchesCubeState(SolverStateData solverState, CubeStateData cubeState)
@@ -114,364 +263,5 @@ public class CubeTester : MonoBehaviour
         }
 
         return true;
-    }
-
-    public static void RunEdgeGroupPdbSmokeTest()
-    {
-        int[] groupA = { 0, 1, 2, 3, 4, 5 };
-        int[] groupB = { 6, 7, 8, 9, 10, 11 };
-
-        Debug.Log("CUBE TESTS - Edge group A fast move matches full state: "
-            + EdgeGroupFastMoveMatchesFullState(groupA));
-        Debug.Log("CUBE TESTS - Edge group B fast move matches full state: "
-            + EdgeGroupFastMoveMatchesFullState(groupB));
-
-        byte[] edgePdb = EdgeGroupPDB.GenerateArray(EdgeGroupPdbTestDepth, groupA);
-        byte[] loadedPdb = SaveAndLoadEdgeGroupPdb(edgePdb);
-
-        Debug.Log("CUBE TESTS - Edge group PDB generated to depth " + EdgeGroupPDB.LastGenerationStats.MaxDepth
-            + " in " + EdgeGroupPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
-        LogEdgeGroupPdbDepthCounts();
-        Debug.Log("CUBE TESTS - Edge group PDB reached requested depth: "
-            + (EdgeGroupPDB.LastGenerationStats.MaxDepth == EdgeGroupPdbTestDepth));
-        Debug.Log("CUBE TESTS - Edge group PDB solved depth is 0: "
-            + (GetEdgeGroupPdbDepth(loadedPdb, groupA) == 0));
-        Debug.Log("CUBE TESTS - Edge group PDB R depth is stored: "
-            + (GetEdgeGroupPdbDepth(loadedPdb, groupA, "R") != EdgeGroupPDB.Unvisited));
-        Debug.Log("CUBE TESTS - Edge group PDB R U F depth <= 3: "
-            + (GetEdgeGroupPdbDepth(loadedPdb, groupA, "R", "U", "F") <= 3));
-        Debug.Log("CUBE TESTS - Edge group PDB save/load visited count matches: "
-            + (EdgeGroupPDB.CountVisited(loadedPdb) == EdgeGroupPDB.CountVisited(edgePdb)));
-        Debug.Log("CUBE TESTS - Edge group PDB visited states: " + EdgeGroupPDB.CountVisited(loadedPdb));
-        Debug.Log("CUBE TESTS - Edge group PDB file path: " + GetEdgeGroupPdbTestFilePath());
-    }
-
-    public static void GenerateAndSaveFullEdgeGroupAPdb()
-    {
-        int[] groupA = { 0, 1, 2, 3, 4, 5 };
-        string filePath = GetFullEdgeGroupAPdbFilePath();
-        string markerPath = GetFullEdgeGroupAPdbMarkerFilePath();
-
-        Debug.Log("CUBE TESTS - Full edge group A PDB generation started");
-        WriteGenerationMarker(markerPath, "Full edge group A PDB generation started", filePath);
-
-        byte[] edgePdb = EdgeGroupPDB.GenerateFull(groupA);
-
-        WriteGenerationMarker(markerPath, "Full edge group A PDB generation finished, saving file", filePath);
-
-        EdgeGroupPDB.Save(edgePdb, filePath);
-        byte[] loadedPdb = EdgeGroupPDB.Load(filePath);
-
-        WriteGenerationMarker(markerPath, "Full edge group A PDB saved and loaded successfully", filePath);
-
-        Debug.Log("CUBE TESTS - Full edge group A PDB generated in "
-            + EdgeGroupPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
-        Debug.Log("CUBE TESTS - Full edge group A PDB max depth: " + EdgeGroupPDB.LastGenerationStats.MaxDepth);
-        LogEdgeGroupPdbDepthCounts();
-        Debug.Log("CUBE TESTS - Full edge group A PDB saved file exists: " + System.IO.File.Exists(filePath));
-        Debug.Log("CUBE TESTS - Full edge group A PDB loaded length is correct: "
-            + (loadedPdb.Length == EdgeGroupPDB.EdgeGroupStateCount));
-        Debug.Log("CUBE TESTS - Full edge group A PDB visited every edge group state: "
-            + (EdgeGroupPDB.LastGenerationStats.VisitedStates == EdgeGroupPDB.EdgeGroupStateCount));
-        Debug.Log("CUBE TESTS - Full edge group A PDB loaded solved depth is 0: "
-            + (GetEdgeGroupPdbDepth(loadedPdb, groupA) == 0));
-        Debug.Log("CUBE TESTS - Full edge group A PDB file path: " + filePath);
-
-        System.IO.File.Delete(markerPath);
-    }
-
-    public static void GenerateAndSaveFullEdgeGroupBPdb()
-    {
-        int[] groupB = { 6, 7, 8, 9, 10, 11 };
-        string filePath = GetFullEdgeGroupBPdbFilePath();
-        string markerPath = GetFullEdgeGroupBPdbMarkerFilePath();
-
-        Debug.Log("CUBE TESTS - Full edge group B PDB generation started");
-        WriteGenerationMarker(markerPath, "Full edge group B PDB generation started", filePath);
-
-        byte[] edgePdb = EdgeGroupPDB.GenerateFull(groupB);
-
-        WriteGenerationMarker(markerPath, "Full edge group B PDB generation finished, saving file", filePath);
-
-        EdgeGroupPDB.Save(edgePdb, filePath);
-        byte[] loadedPdb = EdgeGroupPDB.Load(filePath);
-
-        WriteGenerationMarker(markerPath, "Full edge group B PDB saved and loaded successfully", filePath);
-
-        Debug.Log("CUBE TESTS - Full edge group B PDB generated in "
-            + EdgeGroupPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
-        Debug.Log("CUBE TESTS - Full edge group B PDB max depth: " + EdgeGroupPDB.LastGenerationStats.MaxDepth);
-        LogEdgeGroupPdbDepthCounts();
-        Debug.Log("CUBE TESTS - Full edge group B PDB saved file exists: " + System.IO.File.Exists(filePath));
-        Debug.Log("CUBE TESTS - Full edge group B PDB loaded length is correct: "
-            + (loadedPdb.Length == EdgeGroupPDB.EdgeGroupStateCount));
-        Debug.Log("CUBE TESTS - Full edge group B PDB visited every edge group state: "
-            + (EdgeGroupPDB.LastGenerationStats.VisitedStates == EdgeGroupPDB.EdgeGroupStateCount));
-        Debug.Log("CUBE TESTS - Full edge group B PDB loaded solved depth is 0: "
-            + (GetEdgeGroupPdbDepth(loadedPdb, groupB) == 0));
-        Debug.Log("CUBE TESTS - Full edge group B PDB file path: " + filePath);
-
-        System.IO.File.Delete(markerPath);
-    }
-
-    private static bool EdgeGroupFastMoveMatchesFullState(int[] trackedEdges)
-    {
-        string[][] testSequences =
-        {
-            new string[] { "R" },
-            new string[] { "F" },
-            new string[] { "R", "U", "F" },
-            new string[] { "R", "U2", "F'", "L" },
-            new string[] { "B", "D", "R'", "F2" }
-        };
-
-        foreach (string[] sequence in testSequences)
-        {
-            CubeStateData fullState = CubeState.CreateSolvedState();
-            int fastIndex = EdgeGroupCoordinate.GetIndex(
-                fullState.fullEdgePermutation.ToArray(),
-                fullState.fullEdgeOrientation.ToArray(),
-                trackedEdges);
-
-            foreach (string move in sequence)
-            {
-                MoveProcessor.ApplyMove(fullState, move, false);
-                fastIndex = MoveProcessor.ApplyEdgeGroupMoveToIndex(fastIndex, move, trackedEdges);
-            }
-
-            int fullStateIndex = EdgeGroupCoordinate.GetIndex(
-                fullState.fullEdgePermutation.ToArray(),
-                fullState.fullEdgeOrientation.ToArray(),
-                trackedEdges);
-
-            if (fastIndex != fullStateIndex)
-            {
-                Debug.Log("CUBE TESTS - Edge fast move mismatch on sequence: " + string.Join(", ", sequence));
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public static void RunIDAStarSolveTests()
-    {
-        Debug.Log("CUBE TESTS - IDA* compact solve test started, max depth " + IDAStarTestMaxDepth);
-        TestIDAStarScramble("R", "R");
-        TestIDAStarScramble("R U", "R", "U");
-        TestIDAStarScramble("R U F", "R", "U", "F");
-        TestIDAStarScramble("R U2 F' L", "R", "U2", "F'", "L");
-    }
-
-    private static void TestIDAStarScramble(string testName, params string[] scramble)
-    {
-        CubeStateData state = CubeState.CreateSolvedState();
-
-        foreach (string move in scramble)
-        {
-            MoveProcessor.ApplyMove(state, move, false);
-        }
-
-        System.Collections.Generic.List<string> solution = IDAStarSolver.Solve(state, IDAStarTestMaxDepth);
-
-        bool solved = false;
-        if (solution != null)
-        {
-            foreach (string move in solution)
-            {
-                MoveProcessor.ApplyMove(state, move, false);
-            }
-
-            solved = CubeStateUtility.IsSolved(state);
-        }
-
-        IDAStarSearchStats stats = IDAStarSolver.LastSearchStats;
-        string solutionText = solution == null ? "null" : string.Join(", ", solution);
-        int solutionLength = solution == null ? -1 : solution.Count;
-
-        Debug.Log("CUBE TESTS - IDA* " + testName
-            + " | solved: " + solved
-            + " | length: " + solutionLength
-            + " | time: " + stats.ElapsedMilliseconds + "ms"
-            + " | nodes: " + stats.NodesVisited
-            + " | bounds: " + stats.InitialBound + "->" + stats.FinalBound
-            + " | solution: " + solutionText);
-    }
-
-    public static void RunCornerPdbSmokeTest()
-    {
-        byte[] cornerPdb = CornerPDB.GenerateArray(CornerPdbTestDepth);
-        byte[] loadedPdb = SaveAndLoadCornerPdb(cornerPdb);
-
-        Debug.Log("CUBE TESTS - Corner PDB generated to depth " + CornerPDB.LastGenerationStats.MaxDepth
-            + " in " + CornerPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
-        LogCornerPdbDepthCounts();
-        Debug.Log("CUBE TESTS - Corner PDB solved depth is 0: "
-            + (GetCornerPdbDepth(loadedPdb) == 0));
-        Debug.Log("CUBE TESTS - Corner PDB R depth is 1: "
-            + (GetCornerPdbDepth(loadedPdb, "R") == 1));
-        Debug.Log("CUBE TESTS - Corner PDB R U depth <= 2: "
-            + (GetCornerPdbDepth(loadedPdb, "R", "U") <= 2));
-        Debug.Log("CUBE TESTS - Corner PDB R U F depth <= 3: "
-            + (GetCornerPdbDepth(loadedPdb, "R", "U", "F") <= 3));
-        Debug.Log("CUBE TESTS - Corner PDB save/load visited count matches: "
-            + (CornerPDB.CountVisited(loadedPdb) == CornerPDB.CountVisited(cornerPdb)));
-        Debug.Log("CUBE TESTS - Corner PDB visited states: " + CornerPDB.CountVisited(loadedPdb));
-        Debug.Log("CUBE TESTS - Corner PDB file path: " + GetCornerPdbTestFilePath());
-    }
-
-    public static void GenerateAndSaveFullCornerPdb()
-    {
-        string filePath = GetFullCornerPdbFilePath();
-        string markerPath = GetFullCornerPdbMarkerFilePath();
-
-        WriteGenerationMarker(markerPath, "Full corner PDB generation started", filePath);
-
-        byte[] cornerPdb = CornerPDB.GenerateFull();
-
-        WriteGenerationMarker(markerPath, "Full corner PDB generation finished, saving file", filePath);
-
-        CornerPDB.Save(cornerPdb, filePath);
-        byte[] loadedPdb = CornerPDB.Load(filePath);
-
-        WriteGenerationMarker(markerPath, "Full corner PDB saved and loaded successfully", filePath);
-
-        Debug.Log("CUBE TESTS - Full corner PDB generated in "
-            + CornerPDB.LastGenerationStats.ElapsedMilliseconds + "ms");
-        Debug.Log("CUBE TESTS - Full corner PDB max depth: " + CornerPDB.LastGenerationStats.MaxDepth);
-        LogCornerPdbDepthCounts();
-        Debug.Log("CUBE TESTS - Full corner PDB saved file exists: " + System.IO.File.Exists(filePath));
-        Debug.Log("CUBE TESTS - Full corner PDB loaded length is correct: "
-            + (loadedPdb.Length == CornerPDB.CornerStateCount));
-        Debug.Log("CUBE TESTS - Full corner PDB visited every corner state: "
-            + (CornerPDB.LastGenerationStats.VisitedStates == CornerPDB.CornerStateCount));
-        Debug.Log("CUBE TESTS - Full corner PDB loaded solved depth is 0: "
-            + (GetCornerPdbDepth(loadedPdb) == 0));
-        Debug.Log("CUBE TESTS - Full corner PDB file path: " + filePath);
-
-        System.IO.File.Delete(markerPath);
-    }
-
-    private static byte[] SaveAndLoadCornerPdb(byte[] cornerPdb)
-    {
-        string filePath = GetCornerPdbTestFilePath();
-
-        CornerPDB.Save(cornerPdb, filePath);
-
-        return CornerPDB.Load(filePath);
-    }
-
-    private static byte[] SaveAndLoadEdgeGroupPdb(byte[] edgePdb)
-    {
-        string filePath = GetEdgeGroupPdbTestFilePath();
-
-        EdgeGroupPDB.Save(edgePdb, filePath);
-
-        return EdgeGroupPDB.Load(filePath);
-    }
-
-    private static void LogEdgeGroupPdbDepthCounts()
-    {
-        for (int depth = 0; depth < EdgeGroupPDB.LastGenerationStats.DepthCounts.Length; depth++)
-        {
-            Debug.Log("CUBE TESTS - Edge group PDB depth " + depth
-                + " new states: " + EdgeGroupPDB.LastGenerationStats.DepthCounts[depth]);
-        }
-    }
-
-    private static void LogCornerPdbDepthCounts()
-    {
-        for (int depth = 0; depth < CornerPDB.LastGenerationStats.DepthCounts.Length; depth++)
-        {
-            Debug.Log("CUBE TESTS - Corner PDB depth " + depth
-                + " new states: " + CornerPDB.LastGenerationStats.DepthCounts[depth]);
-        }
-    }
-
-    private static string GetCornerPdbTestFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/corner_test_depth" + CornerPdbTestDepth + ".pdb";
-    }
-
-    private static string GetEdgeGroupPdbTestFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/edge_group_a_test_depth" + EdgeGroupPdbTestDepth + ".pdb";
-    }
-
-    private static string GetFullEdgeGroupAPdbFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/edge_group_a.pdb";
-    }
-
-    private static string GetFullEdgeGroupAPdbMarkerFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/edge_group_a_generation_in_progress.txt";
-    }
-
-    private static string GetFullEdgeGroupBPdbFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/edge_group_b.pdb";
-    }
-
-    private static string GetFullEdgeGroupBPdbMarkerFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/edge_group_b_generation_in_progress.txt";
-    }
-
-    private static string GetFullCornerPdbFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/corner.pdb";
-    }
-
-    private static string GetFullCornerPdbMarkerFilePath()
-    {
-        return Application.dataPath + "/PatternDatabase/corner_generation_in_progress.txt";
-    }
-
-    private static void WriteGenerationMarker(string markerPath, string message, string targetFilePath)
-    {
-        string folderPath = System.IO.Path.GetDirectoryName(markerPath);
-        if (!string.IsNullOrEmpty(folderPath))
-        {
-            System.IO.Directory.CreateDirectory(folderPath);
-        }
-
-        string text = message + "\n"
-            + "Time: " + System.DateTime.Now + "\n"
-            + "Target file: " + targetFilePath + "\n";
-
-        System.IO.File.WriteAllText(markerPath, text);
-    }
-
-    private static byte GetCornerPdbDepth(byte[] cornerPdb, params string[] moves)
-    {
-        CubeStateData state = CubeState.CreateSolvedState();
-
-        foreach (string move in moves)
-        {
-            MoveProcessor.ApplyMove(state, move, false);
-        }
-
-        int index = CornerCoordinate.GetIndex(
-            state.cornerPermutation.ToArray(),
-            state.cornerOrientation.ToArray());
-        return cornerPdb[index];
-    }
-
-    private static byte GetEdgeGroupPdbDepth(byte[] edgePdb, int[] trackedEdges, params string[] moves)
-    {
-        CubeStateData state = CubeState.CreateSolvedState();
-
-        foreach (string move in moves)
-        {
-            MoveProcessor.ApplyMove(state, move, false);
-        }
-
-        int index = EdgeGroupCoordinate.GetIndex(
-            state.fullEdgePermutation.ToArray(),
-            state.fullEdgeOrientation.ToArray(),
-            trackedEdges);
-
-        return edgePdb[index];
     }
 }

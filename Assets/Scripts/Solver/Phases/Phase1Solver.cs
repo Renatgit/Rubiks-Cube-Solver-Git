@@ -3,22 +3,9 @@ using Assets.Scripts.Solver.Heuristics;
 using Assets.Scripts.Solver.Search;
 using System.Collections.Generic;
 
-namespace Assets.Scripts.Solver
+namespace Assets.Scripts.Solver.Phases
 {
-    public class IDAStarSearchStats
-    {
-        public int InitialBound;
-        public int FinalBound;
-        public int BoundIterations;
-        public int NodesVisited;
-        public int NodesExpanded;
-        public int ChildrenGenerated;
-        public int PrunedByHeuristic;
-        public int MaxDepthReached;
-        public long ElapsedMilliseconds;
-    }
-
-    public static class IDAStarSolver
+    public static class Phase1Solver
     {
         public static IDAStarSearchStats LastSearchStats
         {
@@ -32,8 +19,8 @@ namespace Assets.Scripts.Solver
             return IDAStarSearch.Solve(
                 start,
                 maxDepth,
-                SolverStateUtility.IsSolved,
-                FullCubeHeuristic.Estimate,
+                Phase1Goal.IsReached,
+                Phase1Heuristic.Estimate,
                 MoveGenerator.GetValidMoves);
         }
     }
