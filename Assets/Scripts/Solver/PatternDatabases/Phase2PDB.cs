@@ -1,4 +1,5 @@
 using Assets.Scripts.Core;
+using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ using System.IO;
 
 namespace Assets.Scripts.Solver.PatternDatabases
 {
-    public class Phase1PdbGenerationStats
+    public class Phase2PdbGenerationStats
     {
         public int MaxDepth;
         public int VisitedStates;
@@ -15,11 +16,11 @@ namespace Assets.Scripts.Solver.PatternDatabases
         public int[] DepthCounts;
     }
 
-    public static class Phase1PDB
+    public static class Phase2PDB
     {
         public const byte Unvisited = 255;
 
-        public static Phase1PdbGenerationStats LastGenerationStats { get; private set; }
+        public static Phase2PdbGenerationStats LastGenerationStats { get; private set; }
 
         private class PdbNode
         {
@@ -35,24 +36,18 @@ namespace Assets.Scripts.Solver.PatternDatabases
             }
         }
 
-        public static byte[] GenerateCornerSliceArray(int maxDepth)
+        public static byte[] GenerateFullCornerSlicePermutation()
         {
-            return Generate(maxDepth, true, Phase1Coordinate.CornerSliceCount, Phase1Coordinate.GetCornerSliceIndex);
+            return Generate(
+                Phase2Coordinate.CornerSlicePermutationCount,
+                Phase2Coordinate.GetCornerSlicePermutationIndex);
         }
 
-        public static byte[] GenerateEdgeSliceArray(int maxDepth)
+        public static byte[] GenerateFullNonSliceEdgePermutation()
         {
-            return Generate(maxDepth, true, Phase1Coordinate.EdgeSliceCount, Phase1Coordinate.GetEdgeSliceIndex);
-        }
-
-        public static byte[] GenerateFullCornerSlice()
-        {
-            return Generate(0, false, Phase1Coordinate.CornerSliceCount, Phase1Coordinate.GetCornerSliceIndex);
-        }
-
-        public static byte[] GenerateFullEdgeSlice()
-        {
-            return Generate(0, false, Phase1Coordinate.EdgeSliceCount, Phase1Coordinate.GetEdgeSliceIndex);
+            return Generate(
+                Phase2Coordinate.NonSliceEdgePermutationCount,
+                Phase2Coordinate.GetNonSliceEdgePermutationIndex);
         }
 
         public static void Save(byte[] database, string filePath)
@@ -66,14 +61,14 @@ namespace Assets.Scripts.Solver.PatternDatabases
             File.WriteAllBytes(filePath, database);
         }
 
-        public static byte[] LoadCornerSlice(string filePath)
+        public static byte[] LoadCornerSlicePermutation(string filePath)
         {
-            return Load(filePath, Phase1Coordinate.CornerSliceCount, "corner-slice");
+            return Load(filePath, Phase2Coordinate.CornerSlicePermutationCount, "corner-slice permutation");
         }
 
-        public static byte[] LoadEdgeSlice(string filePath)
+        public static byte[] LoadNonSliceEdgePermutation(string filePath)
         {
-            return Load(filePath, Phase1Coordinate.EdgeSliceCount, "edge-slice");
+            return Load(filePath, Phase2Coordinate.NonSliceEdgePermutationCount, "non-slice edge permutation");
         }
 
         public static int CountVisited(byte[] database)
@@ -91,11 +86,7 @@ namespace Assets.Scripts.Solver.PatternDatabases
             return visitedCount;
         }
 
-        private static byte[] Generate(
-            int maxDepth,
-            bool useDepthLimit,
-            int databaseSize,
-            Func<SolverStateData, int> getIndex)
+        private static byte[] Generate(int databaseSize, Func<SolverStateData, int> getIndex)
         {
             Stopwatch stopwatch = Stopwatch.StartNew();
             List<int> depthCounts = new List<int>();
@@ -119,12 +110,7 @@ namespace Assets.Scripts.Solver.PatternDatabases
             {
                 PdbNode current = queue.Dequeue();
 
-                if (useDepthLimit && current.Depth >= maxDepth)
-                {
-                    continue;
-                }
-
-                foreach (string move in MoveGenerator.GetValidMoves(current.PreviousMove))
+                foreach (string move in MoveGenerator.GetValidPhase2Moves(current.PreviousMove))
                 {
                     SolverStateData child = current.State.Clone();
                     MoveProcessor.ApplyMove(child, move);
@@ -145,7 +131,7 @@ namespace Assets.Scripts.Solver.PatternDatabases
             }
 
             stopwatch.Stop();
-            LastGenerationStats = new Phase1PdbGenerationStats
+            LastGenerationStats = new Phase2PdbGenerationStats
             {
                 MaxDepth = depthCounts.Count - 1,
                 VisitedStates = visitedStates,
@@ -162,7 +148,7 @@ namespace Assets.Scripts.Solver.PatternDatabases
 
             if (database.Length != expectedSize)
             {
-                throw new Exception("Invalid " + databaseName + " Phase 1 PDB size! Loaded Size: "
+                throw new Exception("Invalid " + databaseName + " Phase 2 PDB size! Loaded Size: "
                     + database.Length + " bytes");
             }
 
