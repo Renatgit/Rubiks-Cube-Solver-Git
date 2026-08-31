@@ -12,13 +12,17 @@ namespace Assets.Scripts.Solver.Phases
             get { return IDAStarSearch.LastSearchStats; }
         }
 
-        public static List<string> Solve(CubeStateData startState, int maxDepth)
+        public static List<string> Solve(SolverStateData startState, int maxDepth)
         {
-            SolverStateData start = SolverStateData.FromCubeStateData(startState);
+            return Solve(startState, maxDepth, null);
+        }
 
+        public static List<string> Solve(SolverStateData startState, int maxDepth, string previousMove)
+        {
             return IDAStarSearch.Solve(
-                start,
+                startState,
                 maxDepth,
+                previousMove,
                 SolverStateUtility.IsSolved,
                 Phase2Heuristic.Estimate,
                 MoveGenerator.GetValidPhase2Moves);

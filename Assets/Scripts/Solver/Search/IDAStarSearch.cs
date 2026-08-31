@@ -20,6 +20,17 @@ namespace Assets.Scripts.Solver.Search
             Func<SolverStateData, int> estimate,
             Func<string, List<string>> getValidMoves)
         {
+            return Solve(startState, maxDepth, null, isGoal, estimate, getValidMoves);
+        }
+
+        public static List<string> Solve(
+            SolverStateData startState,
+            int maxDepth,
+            string previousMove,
+            Func<SolverStateData, bool> isGoal,
+            Func<SolverStateData, int> estimate,
+            Func<string, List<string>> getValidMoves)
+        {
             Stopwatch stopwatch = Stopwatch.StartNew();
             SolverStateData start = startState.Clone();
 
@@ -37,7 +48,7 @@ namespace Assets.Scripts.Solver.Search
                 LastSearchStats.BoundIterations++;
                 LastSearchStats.FinalBound = bound;
 
-                int result = Search(start, 0, bound, null, path, visitedOnPath, isGoal, estimate, getValidMoves);
+                int result = Search(start, 0, bound, previousMove, path, visitedOnPath, isGoal, estimate, getValidMoves);
 
                 if (result == Found)
                 {

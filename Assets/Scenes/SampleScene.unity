@@ -8232,8 +8232,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 390426c6b36b14d4fa956e9a2667d3bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CubeTester
-  runMoveRegressionOnStart: 0
-  runMovePruningOnStart: 0
 --- !u!1 &2032111933
 GameObject:
   m_ObjectHideFlags: 0
