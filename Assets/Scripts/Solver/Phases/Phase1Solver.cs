@@ -24,6 +24,10 @@ namespace Assets.Scripts.Solver.Phases
         public long NodesVisited;
         public long PrunedByCurrentBest;
         public long PrunedByCornerLowerBound;
+        public long EdgeGroupALookups;
+        public long PrunedByEdgeGroupALowerBound;
+        public long EdgeGroupBLookups;
+        public long PrunedByEdgeGroupBLowerBound;
         public long GoalsReached;
         public long RejectedByPhase2CornerSlice;
         public long CandidatesRebuilt;
@@ -33,6 +37,8 @@ namespace Assets.Scripts.Solver.Phases
     public static class Phase1Solver
     {
         private const int Infinity = int.MaxValue;
+        private const int MaxEdgeGroupALookupRemainingDepth = 8;
+        private const int MaxEdgeGroupBLookupRemainingDepth = 7;
         private static readonly int SolvedSlicePositionIndex =
             Phase1Coordinate.GetSlicePositionIndexFromPositions(new int[] { 8, 9, 10, 11 });
 
@@ -175,12 +181,25 @@ namespace Assets.Scripts.Solver.Phases
             Phase1Heuristic.Prepare();
             Phase2Heuristic.Prepare();
             CornerPDBHeuristics.Prepare();
+            EdgeGroupPDBHeuristics.Prepare();
 
             int startCornerOrientationIndex = Phase1Coordinate.GetCornerOrientationIndex(start);
             int startEdgeOrientationIndex = Phase1Coordinate.GetEdgeOrientationIndex(start);
             int startSlicePositionIndex = Phase1Coordinate.GetSlicePositionIndex(start);
             int startCornerPermutationIndex = Phase2Coordinate.GetCornerPermutationIndex(start);
             int startSliceArrangementIndex = Phase1Coordinate.GetSliceArrangementIndex(start);
+            int startEdgeGroupAIndex = EdgeGroupPDBHeuristics.GetGroupAIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                startEdgeGroupAIndex,
+                out int startEdgeGroupAPositionIndex,
+                out int startEdgeGroupAPermutationIndex,
+                out int startEdgeGroupAOrientationIndex);
+            int startEdgeGroupBIndex = EdgeGroupPDBHeuristics.GetGroupBIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                startEdgeGroupBIndex,
+                out _,
+                out int startEdgeGroupBPermutationIndex,
+                out _);
             int bound = iterateBounds
                 ? Phase1Heuristic.EstimatePrepared(
                     startCornerOrientationIndex,
@@ -206,6 +225,10 @@ namespace Assets.Scripts.Solver.Phases
                     startSlicePositionIndex,
                     startCornerPermutationIndex,
                     startSliceArrangementIndex,
+                    startEdgeGroupAPositionIndex,
+                    startEdgeGroupAPermutationIndex,
+                    startEdgeGroupAOrientationIndex,
+                    startEdgeGroupBPermutationIndex,
                     0,
                     bound,
                     MoveGenerator.NoMoveId,
@@ -359,11 +382,15 @@ namespace Assets.Scripts.Solver.Phases
             int cornerOrientationIndex,
             int edgeOrientationIndex,
             int slicePositionIndex,
-            int cornerPermutationIndex,
-            int sliceArrangementIndex,
+            int baseCornerPermutationIndex,
+            int baseSliceArrangementIndex,
+            int baseEdgeGroupAPositionIndex,
+            int baseEdgeGroupAPermutationIndex,
+            int baseEdgeGroupAOrientationIndex,
+            int baseEdgeGroupBPermutationIndex,
             int depth,
             int bound,
-            int previousMoveId,
+            int incomingMoveId,
             int[] pathMoveIds,
             Func<int> getCurrentBestLength,
             Func<bool> shouldStop,
@@ -395,6 +422,16 @@ namespace Assets.Scripts.Solver.Phases
                 return estimatedTotal;
             }
 
+            // Advance secondary coordinates only after each cheaper lower bound passes
+            int cornerPermutationIndex = baseCornerPermutationIndex;
+            if (incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                cornerPermutationIndex =
+                    Phase1MoveTables.GetCornerPermutationAfterMovePrepared(
+                        baseCornerPermutationIndex,
+                        incomingMoveId);
+            }
+
             if (currentBestLength != Infinity)
             {
                 int cornerLowerBound = CornerPDBHeuristics.EstimatePrepared(
@@ -406,9 +443,133 @@ namespace Assets.Scripts.Solver.Phases
                     LastCandidateSearchStats.PrunedByCornerLowerBound++;
                     return Infinity;
                 }
+
+                int sourceEdgeGroupAPositionIndex = baseEdgeGroupAPositionIndex;
+                int edgeGroupAPositionIndex = baseEdgeGroupAPositionIndex;
+                int edgeGroupAPermutationIndex = baseEdgeGroupAPermutationIndex;
+                int edgeGroupAOrientationIndex = baseEdgeGroupAOrientationIndex;
+
+                if (incomingMoveId != MoveGenerator.NoMoveId)
+                {
+                    edgeGroupAPermutationIndex =
+                        Phase1MoveTables.GetEdgeGroupPermutationAfterMovePrepared(
+                            baseEdgeGroupAPositionIndex,
+                            baseEdgeGroupAPermutationIndex,
+                            incomingMoveId);
+                    edgeGroupAOrientationIndex =
+                        Phase1MoveTables.GetEdgeGroupOrientationAfterMovePrepared(
+                            baseEdgeGroupAPositionIndex,
+                            baseEdgeGroupAOrientationIndex,
+                            incomingMoveId);
+                    edgeGroupAPositionIndex =
+                        Phase1MoveTables.GetEdgeGroupPositionAfterMovePrepared(
+                            baseEdgeGroupAPositionIndex,
+                            incomingMoveId);
+                }
+
+                int remainingDepth = currentBestLength - 1 - depth;
+                if (remainingDepth <= MaxEdgeGroupALookupRemainingDepth)
+                {
+                    int edgeGroupALowerBound = EdgeGroupPDBHeuristics.EstimateGroupAPrepared(
+                        edgeGroupAPositionIndex,
+                        edgeGroupAPermutationIndex,
+                        edgeGroupAOrientationIndex);
+                    LastCandidateSearchStats.EdgeGroupALookups++;
+
+                    if (depth + edgeGroupALowerBound >= currentBestLength)
+                    {
+                        LastCandidateSearchStats.PrunedByEdgeGroupALowerBound++;
+                        return Infinity;
+                    }
+                }
+
+                baseEdgeGroupAPositionIndex = edgeGroupAPositionIndex;
+                baseEdgeGroupAPermutationIndex = edgeGroupAPermutationIndex;
+                baseEdgeGroupAOrientationIndex = edgeGroupAOrientationIndex;
+
+                int edgeGroupBPermutationIndex = baseEdgeGroupBPermutationIndex;
+
+                if (incomingMoveId != MoveGenerator.NoMoveId)
+                {
+                    int sourceEdgeGroupBPositionIndex =
+                        Phase1MoveTables.GetComplementaryEdgeGroupPositionPrepared(
+                            sourceEdgeGroupAPositionIndex);
+                    edgeGroupBPermutationIndex =
+                        Phase1MoveTables.GetEdgeGroupPermutationAfterMovePrepared(
+                            sourceEdgeGroupBPositionIndex,
+                            baseEdgeGroupBPermutationIndex,
+                            incomingMoveId);
+                }
+
+                if (remainingDepth <= MaxEdgeGroupBLookupRemainingDepth)
+                {
+                    int edgeGroupBPositionIndex =
+                        Phase1MoveTables.GetComplementaryEdgeGroupPositionPrepared(
+                            edgeGroupAPositionIndex);
+                    int edgeGroupBOrientationIndex =
+                        Phase1MoveTables.GetEdgeGroupOrientationFromFullOrientationPrepared(
+                            edgeOrientationIndex,
+                            edgeGroupBPositionIndex);
+                    int edgeGroupBLowerBound = EdgeGroupPDBHeuristics.EstimateGroupBPrepared(
+                        edgeGroupBPositionIndex,
+                        edgeGroupBPermutationIndex,
+                        edgeGroupBOrientationIndex);
+                    LastCandidateSearchStats.EdgeGroupBLookups++;
+
+                    if (depth + edgeGroupBLowerBound >= currentBestLength)
+                    {
+                        LastCandidateSearchStats.PrunedByEdgeGroupBLowerBound++;
+                        return Infinity;
+                    }
+                }
+
+                baseEdgeGroupBPermutationIndex = edgeGroupBPermutationIndex;
             }
 
-            if (IsPhase1CoordinateGoal(cornerOrientationIndex, edgeOrientationIndex, slicePositionIndex))
+            if (currentBestLength == Infinity
+                && incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                int sourcePositionIndex = baseEdgeGroupAPositionIndex;
+                int sourceEdgeGroupBPositionIndex =
+                    Phase1MoveTables.GetComplementaryEdgeGroupPositionPrepared(
+                        sourcePositionIndex);
+                baseEdgeGroupAPermutationIndex =
+                    Phase1MoveTables.GetEdgeGroupPermutationAfterMovePrepared(
+                        sourcePositionIndex,
+                        baseEdgeGroupAPermutationIndex,
+                        incomingMoveId);
+                baseEdgeGroupAOrientationIndex =
+                    Phase1MoveTables.GetEdgeGroupOrientationAfterMovePrepared(
+                        sourcePositionIndex,
+                        baseEdgeGroupAOrientationIndex,
+                        incomingMoveId);
+                baseEdgeGroupAPositionIndex =
+                    Phase1MoveTables.GetEdgeGroupPositionAfterMovePrepared(
+                        sourcePositionIndex,
+                        incomingMoveId);
+
+                baseEdgeGroupBPermutationIndex =
+                    Phase1MoveTables.GetEdgeGroupPermutationAfterMovePrepared(
+                        sourceEdgeGroupBPositionIndex,
+                        baseEdgeGroupBPermutationIndex,
+                        incomingMoveId);
+            }
+
+            bool isPhase1Goal = IsPhase1CoordinateGoal(
+                cornerOrientationIndex,
+                edgeOrientationIndex,
+                slicePositionIndex);
+            int sliceArrangementIndex = baseSliceArrangementIndex;
+
+            if (isPhase1Goal && incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                sliceArrangementIndex =
+                    Phase1MoveTables.GetSliceArrangementAfterMovePrepared(
+                        baseSliceArrangementIndex,
+                        incomingMoveId);
+            }
+
+            if (isPhase1Goal)
             {
                 LastCandidateSearchStats.GoalsReached++;
                 int remainingDepth = currentBestLength == Infinity
@@ -443,8 +604,16 @@ namespace Assets.Scripts.Solver.Phases
                 return Infinity;
             }
 
+            if (!isPhase1Goal && incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                sliceArrangementIndex =
+                    Phase1MoveTables.GetSliceArrangementAfterMovePrepared(
+                        baseSliceArrangementIndex,
+                        incomingMoveId);
+            }
+
             int minNextBound = Infinity;
-            int[] validMoveIds = MoveGenerator.GetValidMoveIds(previousMoveId);
+            int[] validMoveIds = MoveGenerator.GetValidMoveIds(incomingMoveId);
 
             for (int i = 0; i < validMoveIds.Length; i++)
             {
@@ -455,10 +624,6 @@ namespace Assets.Scripts.Solver.Phases
                     Phase1MoveTables.GetEdgeOrientationAfterMovePrepared(edgeOrientationIndex, moveId);
                 int nextSlicePositionIndex =
                     Phase1MoveTables.GetSlicePositionAfterMovePrepared(slicePositionIndex, moveId);
-                int nextCornerPermutationIndex =
-                    Phase1MoveTables.GetCornerPermutationAfterMovePrepared(cornerPermutationIndex, moveId);
-                int nextSliceArrangementIndex =
-                    Phase1MoveTables.GetSliceArrangementAfterMovePrepared(sliceArrangementIndex, moveId);
 
                 pathMoveIds[depth] = moveId;
 
@@ -467,8 +632,12 @@ namespace Assets.Scripts.Solver.Phases
                     nextCornerOrientationIndex,
                     nextEdgeOrientationIndex,
                     nextSlicePositionIndex,
-                    nextCornerPermutationIndex,
-                    nextSliceArrangementIndex,
+                    cornerPermutationIndex,
+                    sliceArrangementIndex,
+                    baseEdgeGroupAPositionIndex,
+                    baseEdgeGroupAPermutationIndex,
+                    baseEdgeGroupAOrientationIndex,
+                    baseEdgeGroupBPermutationIndex,
                     depth + 1,
                     bound,
                     moveId,

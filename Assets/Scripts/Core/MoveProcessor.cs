@@ -259,6 +259,23 @@ public static class MoveProcessor
         }
     }
 
+    internal static void ApplyEdgeOrientationMove(
+        int[] currentOrientation,
+        int moveId,
+        int[] movedOrientation)
+    {
+        string move = MoveGenerator.GetMoveName(moveId);
+        int[] permutationMap = MoveMaps[move].FullEdgePermutation;
+        int[] orientationDelta = EdgeOrientationDeltas[move];
+
+        for (int newPosition = 0; newPosition < 12; newPosition++)
+        {
+            int oldPosition = permutationMap[newPosition];
+            movedOrientation[newPosition] =
+                (currentOrientation[oldPosition] + orientationDelta[newPosition]) % 2;
+        }
+    }
+
     private static void UpdateDerivedEdgeState(CubeStateData state)
     {
         state.firstEightEdgePermutation = new List<int>();

@@ -15,6 +15,10 @@ namespace Assets.Scripts.Solver.Phases
         public long SkippedByRemainingDepth;
         public long Phase1NodesVisited;
         public long Phase1PrunedByCornerLowerBound;
+        public long Phase1EdgeGroupALookups;
+        public long Phase1PrunedByEdgeGroupALowerBound;
+        public long Phase1EdgeGroupBLookups;
+        public long Phase1PrunedByEdgeGroupBLowerBound;
         public long Phase1GoalsReached;
         public long Phase1CandidatesPrefiltered;
         public long Phase1CandidatesRebuilt;
@@ -124,6 +128,14 @@ namespace Assets.Scripts.Solver.Phases
             LastStats.Phase1NodesVisited += Phase1Solver.LastCandidateSearchStats.NodesVisited;
             LastStats.Phase1PrunedByCornerLowerBound +=
                 Phase1Solver.LastCandidateSearchStats.PrunedByCornerLowerBound;
+            LastStats.Phase1EdgeGroupALookups +=
+                Phase1Solver.LastCandidateSearchStats.EdgeGroupALookups;
+            LastStats.Phase1PrunedByEdgeGroupALowerBound +=
+                Phase1Solver.LastCandidateSearchStats.PrunedByEdgeGroupALowerBound;
+            LastStats.Phase1EdgeGroupBLookups +=
+                Phase1Solver.LastCandidateSearchStats.EdgeGroupBLookups;
+            LastStats.Phase1PrunedByEdgeGroupBLowerBound +=
+                Phase1Solver.LastCandidateSearchStats.PrunedByEdgeGroupBLowerBound;
             LastStats.Phase1GoalsReached += Phase1Solver.LastCandidateSearchStats.GoalsReached;
             LastStats.Phase1CandidatesPrefiltered +=
                 Phase1Solver.LastCandidateSearchStats.RejectedByPhase2CornerSlice;
@@ -136,7 +148,10 @@ namespace Assets.Scripts.Solver.Phases
         {
             int phase1LowerBound = Phase1Heuristic.Estimate(start);
             int cornerLowerBound = CornerPDBHeuristics.Estimate(start);
-            return phase1LowerBound > cornerLowerBound ? phase1LowerBound : cornerLowerBound;
+            int edgeLowerBound = EdgeGroupPDBHeuristics.Estimate(start);
+            return System.Math.Max(
+                phase1LowerBound,
+                System.Math.Max(cornerLowerBound, edgeLowerBound));
         }
     }
 }

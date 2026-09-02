@@ -3,6 +3,7 @@ using Assets.Scripts.Solver.Coordinates;
 using Assets.Scripts.Solver.PatternDatabases;
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Assets.Scripts.Solver.Heuristics
@@ -31,6 +32,12 @@ namespace Assets.Scripts.Solver.Heuristics
             return Math.Max(groupAEstimate, groupBEstimate);
         }
 
+        public static void Prepare()
+        {
+            LoadGroupAIfNeeded();
+            LoadGroupBIfNeeded();
+        }
+
         public static int EstimateGroupA(CubeStateData state)
         {
             LoadGroupAIfNeeded();
@@ -53,6 +60,46 @@ namespace Assets.Scripts.Solver.Heuristics
         {
             LoadGroupBIfNeeded();
             return EstimateFromDatabase(state, GroupB, edgeGroupBPDB);
+        }
+
+        public static int GetGroupAIndex(SolverStateData state)
+        {
+            return EdgeGroupCoordinate.GetIndex(
+                state.FullEdgePermutation,
+                state.FullEdgeOrientation,
+                GroupA);
+        }
+
+        public static int GetGroupBIndex(SolverStateData state)
+        {
+            return EdgeGroupCoordinate.GetIndex(
+                state.FullEdgePermutation,
+                state.FullEdgeOrientation,
+                GroupB);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EstimateGroupAPrepared(
+            int positionIndex,
+            int permutationIndex,
+            int orientationIndex)
+        {
+            return edgeGroupAPDB[EdgeGroupCoordinate.GetIndexFromComponents(
+                positionIndex,
+                permutationIndex,
+                orientationIndex)];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EstimateGroupBPrepared(
+            int positionIndex,
+            int permutationIndex,
+            int orientationIndex)
+        {
+            return edgeGroupBPDB[EdgeGroupCoordinate.GetIndexFromComponents(
+                positionIndex,
+                permutationIndex,
+                orientationIndex)];
         }
 
         private static int EstimateFromDatabase(CubeStateData state, int[] trackedEdges, byte[] database)

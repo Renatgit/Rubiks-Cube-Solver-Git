@@ -164,6 +164,16 @@ namespace Assets.Scripts.Solver.Coordinates
             positionIndex = edgeGroupIndex / PermutationCount;
         }
 
+        public static int GetIndexFromComponents(
+            int positionIndex,
+            int permutationIndex,
+            int orientationIndex)
+        {
+            return ((positionIndex * PermutationCount) + permutationIndex)
+                * OrientationCount
+                + orientationIndex;
+        }
+
         private static int[][] BuildPositionsByIndex()
         {
             int[][] positionsByIndex = new int[PositionCount][];
