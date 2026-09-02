@@ -6,16 +6,16 @@ namespace Assets.Scripts.Solver.Phases
 {
     public class TwoPhaseSolverStats
     {
-        public int CandidatesFound;
-        public int Phase2Attempts;
-        public int SkippedByPhase2Heuristic;
-        public int SkippedByBestLength;
-        public int BestUpdateCount;
+        public long CandidatesFound;
+        public long Phase2Attempts;
+        public long SkippedByPhase2Heuristic;
+        public long SkippedByBestLength;
+        public long BestUpdateCount;
         public int BestLength;
         public int AcceptableLength;
         public bool StoppedAfterAcceptableLength;
-        public int Phase1NodesVisited;
-        public int Phase1PrunedByCurrentBest;
+        public long Phase1NodesVisited;
+        public long Phase1PrunedByCurrentBest;
         public long TotalElapsedMilliseconds;
         public long TotalPhase2Milliseconds;
         public long LongestPhase2Milliseconds;

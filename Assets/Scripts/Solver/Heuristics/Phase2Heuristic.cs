@@ -16,7 +16,9 @@ namespace Assets.Scripts.Solver.Heuristics
         {
             LoadIfNeeded();
 
-            int cornerSliceEstimate = cornerSlicePermutationPDB[Phase2Coordinate.GetCornerSlicePermutationIndex(state)];
+            int cornerSliceEstimate = EstimateCornerSlicePermutation(
+                Phase2Coordinate.GetCornerPermutationIndex(state),
+                Phase2Coordinate.GetSlicePermutationIndex(state));
             int nonSliceEdgeEstimate = nonSliceEdgePermutationPDB[Phase2Coordinate.GetNonSliceEdgePermutationIndex(state)];
 
             if (cornerSliceEstimate == Phase2PDB.Unvisited || nonSliceEdgeEstimate == Phase2PDB.Unvisited)
@@ -25,6 +27,27 @@ namespace Assets.Scripts.Solver.Heuristics
             }
 
             return Math.Max(cornerSliceEstimate, nonSliceEdgeEstimate);
+        }
+
+        public static int EstimateCornerSlicePermutation(int cornerPermutationIndex, int slicePermutationIndex)
+        {
+            LoadIfNeeded();
+            return EstimateCornerSlicePermutationPrepared(cornerPermutationIndex, slicePermutationIndex);
+        }
+
+        public static void Prepare()
+        {
+            LoadIfNeeded();
+        }
+
+        internal static int EstimateCornerSlicePermutationPrepared(
+            int cornerPermutationIndex,
+            int slicePermutationIndex)
+        {
+            int estimate = cornerSlicePermutationPDB[
+                cornerPermutationIndex * Phase2Coordinate.SlicePermutationCount + slicePermutationIndex];
+
+            return estimate == Phase2PDB.Unvisited ? 0 : estimate;
         }
 
         public static void ClearDatabases()

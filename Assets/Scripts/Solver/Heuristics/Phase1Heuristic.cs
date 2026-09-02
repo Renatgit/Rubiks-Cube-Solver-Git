@@ -3,6 +3,7 @@ using Assets.Scripts.Solver.Coordinates;
 using Assets.Scripts.Solver.PatternDatabases;
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Assets.Scripts.Solver.Heuristics
@@ -11,13 +12,54 @@ namespace Assets.Scripts.Solver.Heuristics
     {
         private static byte[] cornerSlicePDB;
         private static byte[] edgeSlicePDB;
+        private static byte[] exactSymmetryPDB;
+
+        public static bool IsUsingExactSymmetryDatabase
+        {
+            get { return exactSymmetryPDB != null; }
+        }
 
         public static int Estimate(SolverStateData state)
         {
             LoadIfNeeded();
 
-            int cornerSliceEstimate = cornerSlicePDB[Phase1Coordinate.GetCornerSliceIndex(state)];
-            int edgeSliceEstimate = edgeSlicePDB[Phase1Coordinate.GetEdgeSliceIndex(state)];
+            return EstimatePrepared(
+                Phase1Coordinate.GetCornerOrientationIndex(state),
+                Phase1Coordinate.GetEdgeOrientationIndex(state),
+                Phase1Coordinate.GetSlicePositionIndex(state));
+        }
+
+        public static int Estimate(int cornerOrientationIndex, int edgeOrientationIndex, int slicePositionIndex)
+        {
+            LoadIfNeeded();
+
+            return EstimatePrepared(cornerOrientationIndex, edgeOrientationIndex, slicePositionIndex);
+        }
+
+        public static void Prepare()
+        {
+            LoadIfNeeded();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EstimatePrepared(
+            int cornerOrientationIndex,
+            int edgeOrientationIndex,
+            int slicePositionIndex)
+        {
+            if (exactSymmetryPDB != null)
+            {
+                int exactIndex = Phase1SymmetryCoordinate.GetExactIndexPrepared(
+                    cornerOrientationIndex,
+                    edgeOrientationIndex,
+                    slicePositionIndex);
+                return exactSymmetryPDB[exactIndex];
+            }
+
+            int cornerSliceEstimate = cornerSlicePDB[
+                cornerOrientationIndex * Phase1Coordinate.SlicePositionCount + slicePositionIndex];
+            int edgeSliceEstimate = edgeSlicePDB[
+                edgeOrientationIndex * Phase1Coordinate.SlicePositionCount + slicePositionIndex];
 
             if (cornerSliceEstimate == Phase1PDB.Unvisited || edgeSliceEstimate == Phase1PDB.Unvisited)
             {
@@ -41,36 +83,48 @@ namespace Assets.Scripts.Solver.Heuristics
 
             cornerSlicePDB = cornerSliceDatabase;
             edgeSlicePDB = edgeSliceDatabase;
+            exactSymmetryPDB = null;
+        }
+
+        public static void UseExactSymmetryDatabase(byte[] database)
+        {
+            if (database.Length != Phase1SymmetryCoordinate.ExactPhase1EntryCount)
+            {
+                throw new Exception("Invalid exact symmetry Phase 1 PDB size");
+            }
+
+            Phase1SymmetryCoordinate.BuildIfNeeded();
+            exactSymmetryPDB = database;
+            cornerSlicePDB = null;
+            edgeSlicePDB = null;
         }
 
         public static void ClearDatabases()
         {
             cornerSlicePDB = null;
             edgeSlicePDB = null;
+            exactSymmetryPDB = null;
         }
 
         private static void LoadIfNeeded()
         {
-            if (cornerSlicePDB != null && edgeSlicePDB != null)
+            if (exactSymmetryPDB != null
+                || (cornerSlicePDB != null && edgeSlicePDB != null))
             {
                 return;
             }
 
-            string cornerSlicePath = Application.dataPath + "/PatternDatabase/phase1_corner_slice.pdb";
-            string edgeSlicePath = Application.dataPath + "/PatternDatabase/phase1_edge_slice.pdb";
-
-            if (!File.Exists(cornerSlicePath))
+            string exactSymmetryPath = Phase1SymmetryPDB.FilePath;
+            if (!File.Exists(exactSymmetryPath))
             {
-                throw new FileNotFoundException("Phase 1 corner-slice PDB file was not found", cornerSlicePath);
+                Debug.Log("Exact Phase 1 PDB is missing and will be generated once");
+                exactSymmetryPDB = Phase1SymmetryPDB.GenerateFullAndSave(
+                    message => Debug.Log(message));
+                return;
             }
 
-            if (!File.Exists(edgeSlicePath))
-            {
-                throw new FileNotFoundException("Phase 1 edge-slice PDB file was not found", edgeSlicePath);
-            }
-
-            cornerSlicePDB = Phase1PDB.LoadCornerSlice(cornerSlicePath);
-            edgeSlicePDB = Phase1PDB.LoadEdgeSlice(edgeSlicePath);
+            Phase1SymmetryCoordinate.BuildIfNeeded();
+            exactSymmetryPDB = Phase1SymmetryPDB.Load(exactSymmetryPath);
         }
     }
 }

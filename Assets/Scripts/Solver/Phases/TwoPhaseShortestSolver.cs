@@ -9,25 +9,28 @@ namespace Assets.Scripts.Solver.Phases
         public int InitialLowerBound;
         public int FinalDepth;
         public int TotalDepthsTried;
-        public int CandidatesFound;
-        public int Phase2Attempts;
-        public int SkippedByPhase2Heuristic;
-        public int SkippedByRemainingDepth;
-        public int Phase1NodesVisited;
+        public long CandidatesFound;
+        public long Phase2Attempts;
+        public long SkippedByPhase2Heuristic;
+        public long SkippedByRemainingDepth;
+        public long Phase1NodesVisited;
+        public long Phase1PrunedByCornerLowerBound;
+        public long Phase1GoalsReached;
+        public long Phase1CandidatesPrefiltered;
+        public long Phase1CandidatesRebuilt;
         public long TotalElapsedMilliseconds;
         public long TotalPhase2Milliseconds;
     }
 
     public static class TwoPhaseShortestSolver
     {
-        private const int DefaultMaxPhase1Depth = 12;
         private const int DefaultMaxPhase2Depth = 18;
 
         public static TwoPhaseShortestSolverStats LastStats { get; private set; }
 
         public static List<string> Solve(CubeStateData startState, int maxTotalDepth)
         {
-            return Solve(startState, maxTotalDepth, DefaultMaxPhase1Depth, DefaultMaxPhase2Depth);
+            return Solve(startState, maxTotalDepth, maxTotalDepth, DefaultMaxPhase2Depth);
         }
 
         public static List<string> Solve(CubeStateData startState, int maxTotalDepth, int maxPhase1Depth, int maxPhase2Depth)
@@ -75,7 +78,7 @@ namespace Assets.Scripts.Solver.Phases
             List<string> foundSolution = null;
             int phase1DepthLimit = totalDepth < maxPhase1Depth ? totalDepth : maxPhase1Depth;
 
-            Phase1Solver.SearchCandidates(
+            Phase1Solver.SearchCoordinateCandidatesAtBound(
                 startState,
                 phase1DepthLimit,
                 () => totalDepth + 1,
@@ -119,12 +122,21 @@ namespace Assets.Scripts.Solver.Phases
                 });
 
             LastStats.Phase1NodesVisited += Phase1Solver.LastCandidateSearchStats.NodesVisited;
+            LastStats.Phase1PrunedByCornerLowerBound +=
+                Phase1Solver.LastCandidateSearchStats.PrunedByCornerLowerBound;
+            LastStats.Phase1GoalsReached += Phase1Solver.LastCandidateSearchStats.GoalsReached;
+            LastStats.Phase1CandidatesPrefiltered +=
+                Phase1Solver.LastCandidateSearchStats.RejectedByPhase2CornerSlice;
+            LastStats.Phase1CandidatesRebuilt +=
+                Phase1Solver.LastCandidateSearchStats.CandidatesRebuilt;
             return foundSolution;
         }
 
         private static int GetInitialLowerBound(SolverStateData start)
         {
-            return Phase1Heuristic.Estimate(start);
+            int phase1LowerBound = Phase1Heuristic.Estimate(start);
+            int cornerLowerBound = CornerPDBHeuristics.Estimate(start);
+            return phase1LowerBound > cornerLowerBound ? phase1LowerBound : cornerLowerBound;
         }
     }
 }

@@ -10,10 +10,10 @@ namespace Assets.Scripts.Solver
         public int InitialBound;
         public int FinalBound;
         public int BoundIterations;
-        public int NodesVisited;
-        public int NodesExpanded;
-        public int ChildrenGenerated;
-        public int PrunedByHeuristic;
+        public long NodesVisited;
+        public long NodesExpanded;
+        public long ChildrenGenerated;
+        public long PrunedByHeuristic;
         public int MaxDepthReached;
         public long ElapsedMilliseconds;
     }

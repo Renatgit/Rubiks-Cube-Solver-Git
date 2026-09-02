@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
 using RubiksCubeSim;
+using Assets.Scripts.Core;
 public static class MoveProcessor
 {
     //MoveMaps maps Rubik's Cube moves to their corresponding MoveData
@@ -72,11 +73,11 @@ public static class MoveProcessor
         ) },
         { "B'", new MoveData(
             new int[] { 0, 1, 6, 2, 4, 5, 7, 3 },
-            new int[] { 0, 1, 10, 3, 4, 5, 11, 7, 8, 9, 6, 2 }
+            new int[] { 0, 1, 11, 3, 4, 5, 10, 7, 8, 9, 2, 6 }
         ) },
         { "B", new MoveData(
             new int[] { 0, 1, 3, 7, 4, 5, 2, 6 },
-            new int[] { 0, 1, 11, 3, 4, 5, 10, 7, 8, 9, 2, 6 }
+            new int[] { 0, 1, 10, 3, 4, 5, 11, 7, 8, 9, 6, 2 }
         ) },
         { "B2", new MoveData(
             new int[] { 0, 1, 7, 6, 4, 5, 3, 2 },
@@ -188,6 +189,11 @@ public static class MoveProcessor
         state.moveHistory.Add(move);
     }
 
+    public static void ApplyMove(CubeStateData state, int moveId, bool recordMoveHistory = true)
+    {
+        ApplyMove(state, MoveGenerator.GetMoveName(moveId), recordMoveHistory);
+    }
+
     public static void ApplyMove(SolverStateData state, string move)
     {
         int[] newCornerPermutation = new int[8];
@@ -220,6 +226,37 @@ public static class MoveProcessor
         state.CornerOrientation = newCornerOrientation;
         state.FullEdgePermutation = newFullEdgePermutation;
         state.FullEdgeOrientation = newFullEdgeOrientation;
+    }
+
+    public static void ApplyMove(SolverStateData state, int moveId)
+    {
+        ApplyMove(state, MoveGenerator.GetMoveName(moveId));
+    }
+
+    internal static void ApplyCornerPermutationMove(
+        int[] currentPermutation,
+        int moveId,
+        int[] movedPermutation)
+    {
+        int[] permutationMap = MoveMaps[MoveGenerator.GetMoveName(moveId)].CornerPermutation;
+
+        for (int oldPosition = 0; oldPosition < 8; oldPosition++)
+        {
+            movedPermutation[permutationMap[oldPosition]] = currentPermutation[oldPosition];
+        }
+    }
+
+    internal static void ApplyEdgePermutationMove(
+        int[] currentPermutation,
+        int moveId,
+        int[] movedPermutation)
+    {
+        int[] permutationMap = MoveMaps[MoveGenerator.GetMoveName(moveId)].FullEdgePermutation;
+
+        for (int newPosition = 0; newPosition < 12; newPosition++)
+        {
+            movedPermutation[newPosition] = currentPermutation[permutationMap[newPosition]];
+        }
     }
 
     private static void UpdateDerivedEdgeState(CubeStateData state)

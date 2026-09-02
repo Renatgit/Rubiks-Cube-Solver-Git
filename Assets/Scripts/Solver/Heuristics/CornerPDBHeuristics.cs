@@ -2,6 +2,7 @@ using Assets.Scripts.Solver;
 using Assets.Scripts.Solver.Coordinates;
 using Assets.Scripts.Solver.PatternDatabases;
 using System.IO;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 
 namespace Assets.Scripts.Solver.Heuristics
@@ -25,11 +26,24 @@ namespace Assets.Scripts.Solver.Heuristics
         {
             LoadIfNeeded();
 
-            int cornerIndex = CornerCoordinate.GetIndex(
-                state.CornerPermutation,
-                state.CornerOrientation);
+            return EstimatePrepared(
+                CornerCoordinate.GetPermutationIndex(state.CornerPermutation),
+                CornerCoordinate.GetOrientationIndex(state.CornerOrientation));
+        }
 
-            return cornerPDB[cornerIndex];
+        public static void Prepare()
+        {
+            LoadIfNeeded();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EstimatePrepared(
+            int cornerPermutationIndex,
+            int cornerOrientationIndex)
+        {
+            return cornerPDB[
+                cornerPermutationIndex * CornerCoordinate.CornerOrientationCount
+                + cornerOrientationIndex];
         }
 
         private static void LoadIfNeeded()
