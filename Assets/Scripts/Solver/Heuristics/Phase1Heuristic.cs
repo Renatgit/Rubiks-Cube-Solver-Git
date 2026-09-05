@@ -36,6 +36,38 @@ namespace Assets.Scripts.Solver.Heuristics
             return EstimatePrepared(cornerOrientationIndex, edgeOrientationIndex, slicePositionIndex);
         }
 
+        public static int EstimateAcrossAxes(SolverStateData state)
+        {
+            return EstimateAcrossAxes(state, true);
+        }
+
+        public static int EstimateAcrossAxes(
+            SolverStateData state,
+            bool useEqualEstimateBonus)
+        {
+            LoadIfNeeded();
+
+            int cornerOrientationIndex = Phase1Coordinate.GetCornerOrientationIndex(state);
+            int edgeOrientationIndex = Phase1Coordinate.GetEdgeOrientationIndex(state);
+            int slicePositionIndex = Phase1Coordinate.GetSlicePositionIndex(state);
+            int udEstimate = EstimatePrepared(
+                cornerOrientationIndex,
+                edgeOrientationIndex,
+                slicePositionIndex);
+            Phase1AxisCoordinateView firstRotatedView = Phase1AxisCoordinate.CreateView(
+                state,
+                Phase1AxisCoordinate.FirstRotatedAxisView);
+            Phase1AxisCoordinateView secondRotatedView = Phase1AxisCoordinate.CreateView(
+                state,
+                Phase1AxisCoordinate.SecondRotatedAxisView);
+
+            return EstimateAcrossAxesPrepared(
+                udEstimate,
+                firstRotatedView,
+                secondRotatedView,
+                useEqualEstimateBonus);
+        }
+
         public static void Prepare()
         {
             LoadIfNeeded();
@@ -67,6 +99,37 @@ namespace Assets.Scripts.Solver.Heuristics
             }
 
             return Math.Max(cornerSliceEstimate, edgeSliceEstimate);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int EstimateAcrossAxesPrepared(
+            int udEstimate,
+            Phase1AxisCoordinateView firstRotatedView,
+            Phase1AxisCoordinateView secondRotatedView,
+            bool useEqualEstimateBonus)
+        {
+            int firstRotatedEstimate = EstimatePrepared(
+                firstRotatedView.CornerOrientationIndex,
+                firstRotatedView.EdgeOrientationIndex,
+                firstRotatedView.SlicePositionIndex);
+            int secondRotatedEstimate = EstimatePrepared(
+                secondRotatedView.CornerOrientationIndex,
+                secondRotatedView.EdgeOrientationIndex,
+                secondRotatedView.SlicePositionIndex);
+            int maximum = Math.Max(
+                udEstimate,
+                Math.Max(firstRotatedEstimate, secondRotatedEstimate));
+
+            if (useEqualEstimateBonus
+                && exactSymmetryPDB != null
+                && maximum > 0
+                && udEstimate == firstRotatedEstimate
+                && firstRotatedEstimate == secondRotatedEstimate)
+            {
+                maximum++;
+            }
+
+            return maximum;
         }
 
         public static void UseDatabases(byte[] cornerSliceDatabase, byte[] edgeSliceDatabase)

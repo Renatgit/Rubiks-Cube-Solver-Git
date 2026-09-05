@@ -10,6 +10,10 @@ namespace Assets.Scripts.Solver.Coordinates
 
         public const int CornerSliceCount = CornerOrientationCount * SlicePositionCount;
         public const int EdgeSliceCount = EdgeOrientationCount * SlicePositionCount;
+        public const int CornerPermutationSlicePositionCount =
+            Phase2Coordinate.CornerPermutationCount * SlicePositionCount;
+        public const int CornerPermutationEdgeOrientationCount =
+            Phase2Coordinate.CornerPermutationCount * EdgeOrientationCount;
 
         private const int EdgeCount = 12;
         private const int SliceEdgeCount = 4;

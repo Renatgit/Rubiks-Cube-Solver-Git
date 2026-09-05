@@ -17,13 +17,17 @@ public class CubeTester : MonoBehaviour
         Phase2Heuristic.Prepare();
         CornerPDBHeuristics.Prepare();
         EdgeGroupPDBHeuristics.Prepare();
+        FullCubeHeuristic.Prepare();
 
         TestShortestSolverScramble(
-            "15-move scramble",
-            "R", "U", "F'", "L2", "D", "B'", "R2", "U'", "F", "D2", "L", "B2", "U", "R", "F");
+            "17-move scramble",
+            "R", "U", "F'", "L2", "D", "B'", "R2", "U'", "F",
+            "D2", "L", "B2", "U", "R", "F", "L", "B");
     }
 
-    private static void TestShortestSolverScramble(string testName, params string[] scramble)
+    private static void TestShortestSolverScramble(
+        string testName,
+        params string[] scramble)
     {
         CubeStateData state = CubeState.CreateSolvedState();
         ApplyMoves(state, scramble);
@@ -47,6 +51,9 @@ public class CubeTester : MonoBehaviour
             : stats.Phase1NodesVisited * 1000 / stats.TotalElapsedMilliseconds;
 
         Debug.Log("CUBE TESTS - TwoPhaseShortestSolver " + testName
+            + " | axis mode: " + stats.AxisHeuristicMode
+            + " | workers: " + stats.ParallelWorkers
+            + " | cancelled branches: " + stats.CancelledBranches
             + " | solved: " + solved
             + " | exact PDB: " + Phase1Heuristic.IsUsingExactSymmetryDatabase
             + " | length: " + solutionLength
@@ -61,7 +68,11 @@ public class CubeTester : MonoBehaviour
             + " | prefiltered: " + stats.Phase1CandidatesPrefiltered
             + " | rebuilt: " + stats.Phase1CandidatesRebuilt
             + " | phase1 nodes: " + stats.Phase1NodesVisited
+            + " | triple-axis lookups: " + stats.Phase1TripleAxisLookups
+            + " | triple-axis pruned: " + stats.Phase1PrunedByTripleAxisLowerBound
             + " | corner pruned: " + stats.Phase1PrunedByCornerLowerBound
+            + " | corner-edge lookups: " + stats.Phase1CornerEdgeLookups
+            + " | corner-edge pruned: " + stats.Phase1PrunedByCornerEdgeLowerBound
             + " | edge A lookups: " + stats.Phase1EdgeGroupALookups
             + " | edge A pruned: " + stats.Phase1PrunedByEdgeGroupALowerBound
             + " | edge B lookups: " + stats.Phase1EdgeGroupBLookups
@@ -80,5 +91,4 @@ public class CubeTester : MonoBehaviour
             MoveProcessor.ApplyMove(state, move, false);
         }
     }
-
 }

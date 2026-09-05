@@ -1,11 +1,72 @@
 using Assets.Scripts.Core;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Assets.Scripts.Solver.Coordinates
 {
+    internal struct Phase1AxisCoordinateView
+    {
+        public int CornerOrientationIndex;
+        public int EdgeOrientationIndex;
+        public int SlicePositionIndex;
+
+        public Phase1AxisCoordinateView(
+            int cornerOrientationIndex,
+            int edgeOrientationIndex,
+            int slicePositionIndex)
+        {
+            CornerOrientationIndex = cornerOrientationIndex;
+            EdgeOrientationIndex = edgeOrientationIndex;
+            SlicePositionIndex = slicePositionIndex;
+        }
+    }
+
+    public static class Phase1AxisCoordinate
+    {
+        public const int UdAxisView = 0;
+        public const int FirstRotatedAxisView = 1;
+        public const int SecondRotatedAxisView = 2;
+
+        internal static Phase1AxisCoordinateView CreateView(
+            SolverStateData state,
+            int axisViewIndex)
+        {
+            SolverStateData transformed =
+                Phase1Symmetry.TransformToAxisView(state, axisViewIndex);
+
+            return new Phase1AxisCoordinateView(
+                Phase1Coordinate.GetCornerOrientationIndex(transformed),
+                Phase1Coordinate.GetEdgeOrientationIndex(transformed),
+                Phase1Coordinate.GetSlicePositionIndex(transformed));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static Phase1AxisCoordinateView MovePrepared(
+            Phase1AxisCoordinateView view,
+            int axisViewIndex,
+            int originalMoveId)
+        {
+            int mappedMoveId = Phase1Symmetry.GetAxisConjugatedMoveIdPrepared(
+                axisViewIndex,
+                originalMoveId);
+
+            return new Phase1AxisCoordinateView(
+                Phase1MoveTables.GetCornerOrientationAfterMovePrepared(
+                    view.CornerOrientationIndex,
+                    mappedMoveId),
+                Phase1MoveTables.GetEdgeOrientationAfterMovePrepared(
+                    view.EdgeOrientationIndex,
+                    mappedMoveId),
+                Phase1MoveTables.GetSlicePositionAfterMovePrepared(
+                    view.SlicePositionIndex,
+                    mappedMoveId));
+        }
+    }
+
     public static class Phase1Symmetry
     {
         public const int Count = 16;
+        public const int AxisViewCount = 3;
 
         private static readonly int[] OurCornerToStandard = { 0, 1, 3, 2, 4, 5, 7, 6 };
         private static readonly int[] OurEdgeToStandard = { 0, 2, 3, 1, 4, 6, 7, 5, 8, 9, 11, 10 };
@@ -13,6 +74,9 @@ namespace Assets.Scripts.Solver.Coordinates
         private static readonly SymmetryCubie[] Symmetries = BuildSymmetries();
         private static readonly int[] InverseIndices = BuildInverseIndices();
         private static readonly int[] ConjugatedMoveIds = BuildConjugatedMoveIds();
+        private static readonly SymmetryCubie[] AxisViews = BuildAxisViews();
+        private static readonly int[] AxisViewInverseIndices = { 0, 2, 1 };
+        private static readonly int[] AxisConjugatedMoveIds = BuildAxisConjugatedMoveIds();
 
         public static int GetInverseIndex(int symmetryIndex)
         {
@@ -26,6 +90,24 @@ namespace Assets.Scripts.Solver.Coordinates
             return ConjugatedMoveIds[symmetryIndex * MoveGenerator.AllMoves.Length + moveId];
         }
 
+        public static int GetAxisConjugatedMoveId(int axisViewIndex, int moveId)
+        {
+            ValidateAxisViewIndex(axisViewIndex);
+
+            if (moveId < 0 || moveId >= MoveGenerator.AllMoves.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(moveId));
+            }
+
+            return GetAxisConjugatedMoveIdPrepared(axisViewIndex, moveId);
+        }
+
+        internal static int GetAxisConjugatedMoveIdPrepared(int axisViewIndex, int moveId)
+        {
+            return AxisConjugatedMoveIds[
+                axisViewIndex * MoveGenerator.AllMoves.Length + moveId];
+        }
+
         public static SolverStateData Transform(SolverStateData state, int symmetryIndex)
         {
             ValidateSymmetryIndex(symmetryIndex);
@@ -33,6 +115,18 @@ namespace Assets.Scripts.Solver.Coordinates
             SymmetryCubie transformed = Symmetries[symmetryIndex].Clone();
             transformed.Multiply(SymmetryCubie.FromState(state));
             transformed.Multiply(Symmetries[InverseIndices[symmetryIndex]]);
+            return transformed.ToState();
+        }
+
+        public static SolverStateData TransformToAxisView(
+            SolverStateData state,
+            int axisViewIndex)
+        {
+            ValidateAxisViewIndex(axisViewIndex);
+
+            SymmetryCubie transformed = AxisViews[axisViewIndex].Clone();
+            transformed.Multiply(SymmetryCubie.FromState(state));
+            transformed.Multiply(AxisViews[AxisViewInverseIndices[axisViewIndex]]);
             return transformed.ToState();
         }
 
@@ -148,6 +242,31 @@ namespace Assets.Scripts.Solver.Coordinates
             return symmetries;
         }
 
+        private static SymmetryCubie[] BuildAxisViews()
+        {
+            SymmetryCubie rotationUrf3 = FromStandard(
+                new int[] { 0, 4, 5, 1, 3, 7, 6, 2 },
+                new int[] { 1, 2, 1, 2, 2, 1, 2, 1 },
+                new int[] { 1, 8, 5, 9, 3, 11, 7, 10, 0, 4, 6, 2 },
+                new int[] { 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1 });
+
+            SymmetryCubie[] axisViews = new SymmetryCubie[AxisViewCount];
+            axisViews[0] = SymmetryCubie.Identity();
+            axisViews[1] = rotationUrf3;
+            axisViews[2] = rotationUrf3.Clone();
+            axisViews[2].Multiply(rotationUrf3);
+
+            SymmetryCubie fullCycle = axisViews[2].Clone();
+            fullCycle.Multiply(rotationUrf3);
+            if (!fullCycle.IsIdentity())
+            {
+                throw new InvalidOperationException(
+                    "The three Phase 1 axis views did not form a complete rotation cycle");
+            }
+
+            return axisViews;
+        }
+
         private static int[] BuildInverseIndices()
         {
             int[] inverseIndices = new int[Count];
@@ -224,6 +343,57 @@ namespace Assets.Scripts.Solver.Coordinates
             return conjugatedMoveIds;
         }
 
+        private static int[] BuildAxisConjugatedMoveIds()
+        {
+            int moveCount = MoveGenerator.AllMoves.Length;
+            int[] conjugatedMoveIds = new int[AxisViewCount * moveCount];
+            SymmetryCubie[] moveCubies = new SymmetryCubie[moveCount];
+
+            for (int moveId = 0; moveId < moveCount; moveId++)
+            {
+                SolverStateData state =
+                    SolverStateData.FromCubeStateData(CubeState.CreateSolvedState());
+                MoveProcessor.ApplyMove(state, moveId);
+                moveCubies[moveId] = SymmetryCubie.FromState(state);
+            }
+
+            for (int axisViewIndex = 0; axisViewIndex < AxisViewCount; axisViewIndex++)
+            {
+                for (int moveId = 0; moveId < moveCount; moveId++)
+                {
+                    SymmetryCubie transformedMove = AxisViews[axisViewIndex].Clone();
+                    transformedMove.Multiply(moveCubies[moveId]);
+                    transformedMove.Multiply(
+                        AxisViews[AxisViewInverseIndices[axisViewIndex]]);
+
+                    int matchingMoveId = -1;
+
+                    for (int candidateMoveId = 0;
+                        candidateMoveId < moveCount;
+                        candidateMoveId++)
+                    {
+                        if (transformedMove.Equals(moveCubies[candidateMoveId]))
+                        {
+                            matchingMoveId = candidateMoveId;
+                            break;
+                        }
+                    }
+
+                    if (matchingMoveId < 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Axis view " + axisViewIndex
+                            + " did not map move " + MoveGenerator.GetMoveName(moveId)
+                            + " to another legal move");
+                    }
+
+                    conjugatedMoveIds[axisViewIndex * moveCount + moveId] = matchingMoveId;
+                }
+            }
+
+            return conjugatedMoveIds;
+        }
+
         private static SymmetryCubie FromStandard(
             int[] standardCornerPermutation,
             int[] standardCornerOrientation,
@@ -287,6 +457,14 @@ namespace Assets.Scripts.Solver.Coordinates
             if (symmetryIndex < 0 || symmetryIndex >= Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(symmetryIndex));
+            }
+        }
+
+        private static void ValidateAxisViewIndex(int axisViewIndex)
+        {
+            if (axisViewIndex < 0 || axisViewIndex >= AxisViewCount)
+            {
+                throw new ArgumentOutOfRangeException(nameof(axisViewIndex));
             }
         }
 

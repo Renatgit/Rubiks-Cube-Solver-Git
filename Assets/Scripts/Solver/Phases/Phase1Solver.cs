@@ -4,9 +4,17 @@ using Assets.Scripts.Solver.Heuristics;
 using Assets.Scripts.Solver.Search;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Assets.Scripts.Solver.Phases
 {
+    public enum Phase1AxisHeuristicMode
+    {
+        SingleAxis,
+        TripleAxis,
+        TripleAxisWithEqualEstimateBonus
+    }
+
     public class Phase1Candidate
     {
         public SolverStateData State;
@@ -23,7 +31,11 @@ namespace Assets.Scripts.Solver.Phases
     {
         public long NodesVisited;
         public long PrunedByCurrentBest;
+        public long TripleAxisLookups;
+        public long PrunedByTripleAxisLowerBound;
         public long PrunedByCornerLowerBound;
+        public long CornerEdgeLookups;
+        public long PrunedByCornerEdgeLowerBound;
         public long EdgeGroupALookups;
         public long PrunedByEdgeGroupALowerBound;
         public long EdgeGroupBLookups;
@@ -32,11 +44,13 @@ namespace Assets.Scripts.Solver.Phases
         public long RejectedByPhase2CornerSlice;
         public long CandidatesRebuilt;
         public bool StoppedEarly;
+        public bool Cancelled;
     }
 
     public static class Phase1Solver
     {
         private const int Infinity = int.MaxValue;
+        private const int MaxCornerEdgeLookupRemainingDepth = 7;
         private const int MaxEdgeGroupALookupRemainingDepth = 8;
         private const int MaxEdgeGroupBLookupRemainingDepth = 7;
         private static readonly int SolvedSlicePositionIndex =
@@ -54,6 +68,18 @@ namespace Assets.Scripts.Solver.Phases
                 State = state;
                 Heuristic = heuristic;
             }
+        }
+
+        private class FixedCandidateSearchContext
+        {
+            public SolverStateData StartState;
+            public int Bound;
+            public int CurrentBestLength;
+            public int[] PathMoveIds;
+            public Func<Phase1Candidate, bool> OnCandidateFound;
+            public Phase1CandidateSearchStats Stats;
+            public CancellationToken CancellationToken;
+            public Phase1AxisHeuristicMode AxisHeuristicMode;
         }
 
         public static IDAStarSearchStats LastSearchStats
@@ -168,6 +194,186 @@ namespace Assets.Scripts.Solver.Phases
                 onCandidateFound);
         }
 
+        public static bool SearchCoordinateCandidatesAtBound(
+            CubeStateData startState,
+            int bound,
+            int currentBestLength,
+            Func<Phase1Candidate, bool> onCandidateFound)
+        {
+            if (onCandidateFound == null)
+            {
+                throw new ArgumentNullException(nameof(onCandidateFound));
+            }
+
+            SolverStateData start = SolverStateData.FromCubeStateData(startState);
+            PrepareFixedCoordinateSearch();
+
+            int cornerOrientationIndex = Phase1Coordinate.GetCornerOrientationIndex(start);
+            int edgeOrientationIndex = Phase1Coordinate.GetEdgeOrientationIndex(start);
+            int slicePositionIndex = Phase1Coordinate.GetSlicePositionIndex(start);
+            Phase1AxisCoordinateView firstRotatedView = Phase1AxisCoordinate.CreateView(
+                start,
+                Phase1AxisCoordinate.FirstRotatedAxisView);
+            Phase1AxisCoordinateView secondRotatedView = Phase1AxisCoordinate.CreateView(
+                start,
+                Phase1AxisCoordinate.SecondRotatedAxisView);
+            int cornerPermutationIndex = Phase2Coordinate.GetCornerPermutationIndex(start);
+            int sliceArrangementIndex = Phase1Coordinate.GetSliceArrangementIndex(start);
+            int edgeGroupAIndex = EdgeGroupPDBHeuristics.GetGroupAIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                edgeGroupAIndex,
+                out int edgeGroupAPositionIndex,
+                out int edgeGroupAPermutationIndex,
+                out int edgeGroupAOrientationIndex);
+            int edgeGroupBIndex = EdgeGroupPDBHeuristics.GetGroupBIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                edgeGroupBIndex,
+                out _,
+                out int edgeGroupBPermutationIndex,
+                out _);
+
+            Phase1CandidateSearchStats stats = new Phase1CandidateSearchStats();
+            FixedCandidateSearchContext context = new FixedCandidateSearchContext
+            {
+                StartState = start,
+                Bound = bound,
+                CurrentBestLength = currentBestLength,
+                PathMoveIds = new int[bound],
+                OnCandidateFound = onCandidateFound,
+                Stats = stats,
+                CancellationToken = CancellationToken.None,
+                AxisHeuristicMode =
+                    Phase1AxisHeuristicMode.TripleAxisWithEqualEstimateBonus
+            };
+
+            bool stoppedEarly = SearchCoordinateCandidateAtFixedBound(
+                context,
+                cornerOrientationIndex,
+                edgeOrientationIndex,
+                slicePositionIndex,
+                firstRotatedView,
+                secondRotatedView,
+                cornerPermutationIndex,
+                sliceArrangementIndex,
+                edgeGroupAPositionIndex,
+                edgeGroupAPermutationIndex,
+                edgeGroupAOrientationIndex,
+                edgeGroupBPermutationIndex,
+                0,
+                MoveGenerator.NoMoveId);
+            LastCandidateSearchStats = stats;
+            return stoppedEarly;
+        }
+
+        internal static void PrepareFixedCoordinateSearch()
+        {
+            Phase1MoveTables.BuildIfNeeded();
+            Phase1Heuristic.Prepare();
+            Phase2Heuristic.Prepare();
+            CornerPDBHeuristics.Prepare();
+            EdgeGroupPDBHeuristics.Prepare();
+            FullCubeHeuristic.Prepare();
+        }
+
+        internal static bool SearchCoordinateRootBranchAtBoundPrepared(
+            SolverStateData start,
+            int bound,
+            int currentBestLength,
+            Phase1AxisHeuristicMode axisHeuristicMode,
+            int firstMoveId,
+            CancellationToken cancellationToken,
+            Func<Phase1Candidate, bool> onCandidateFound,
+            out Phase1CandidateSearchStats stats)
+        {
+            if (bound < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bound));
+            }
+
+            if (firstMoveId < 0 || firstMoveId >= MoveGenerator.AllMoves.Length)
+            {
+                throw new ArgumentOutOfRangeException(nameof(firstMoveId));
+            }
+
+            if (onCandidateFound == null)
+            {
+                throw new ArgumentNullException(nameof(onCandidateFound));
+            }
+
+            stats = new Phase1CandidateSearchStats();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                stats.Cancelled = true;
+                return true;
+            }
+
+            FixedCandidateSearchContext context = new FixedCandidateSearchContext
+            {
+                StartState = start,
+                Bound = bound,
+                CurrentBestLength = currentBestLength,
+                PathMoveIds = new int[bound],
+                OnCandidateFound = onCandidateFound,
+                Stats = stats,
+                CancellationToken = cancellationToken,
+                AxisHeuristicMode = axisHeuristicMode
+            };
+
+            int cornerOrientationIndex = Phase1Coordinate.GetCornerOrientationIndex(start);
+            int edgeOrientationIndex = Phase1Coordinate.GetEdgeOrientationIndex(start);
+            int slicePositionIndex = Phase1Coordinate.GetSlicePositionIndex(start);
+            Phase1AxisCoordinateView firstRotatedView = Phase1AxisCoordinate.CreateView(
+                start,
+                Phase1AxisCoordinate.FirstRotatedAxisView);
+            Phase1AxisCoordinateView secondRotatedView = Phase1AxisCoordinate.CreateView(
+                start,
+                Phase1AxisCoordinate.SecondRotatedAxisView);
+            int cornerPermutationIndex = Phase2Coordinate.GetCornerPermutationIndex(start);
+            int sliceArrangementIndex = Phase1Coordinate.GetSliceArrangementIndex(start);
+            int edgeGroupAIndex = EdgeGroupPDBHeuristics.GetGroupAIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                edgeGroupAIndex,
+                out int edgeGroupAPositionIndex,
+                out int edgeGroupAPermutationIndex,
+                out int edgeGroupAOrientationIndex);
+            int edgeGroupBIndex = EdgeGroupPDBHeuristics.GetGroupBIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                edgeGroupBIndex,
+                out _,
+                out int edgeGroupBPermutationIndex,
+                out _);
+
+            int nextCornerOrientationIndex =
+                Phase1MoveTables.GetCornerOrientationAfterMovePrepared(
+                    cornerOrientationIndex,
+                    firstMoveId);
+            int nextEdgeOrientationIndex =
+                Phase1MoveTables.GetEdgeOrientationAfterMovePrepared(
+                    edgeOrientationIndex,
+                    firstMoveId);
+            int nextSlicePositionIndex =
+                Phase1MoveTables.GetSlicePositionAfterMovePrepared(
+                    slicePositionIndex,
+                    firstMoveId);
+            context.PathMoveIds[0] = firstMoveId;
+
+            return SearchCoordinateCandidateAtFixedBound(
+                context,
+                nextCornerOrientationIndex,
+                nextEdgeOrientationIndex,
+                nextSlicePositionIndex,
+                firstRotatedView,
+                secondRotatedView,
+                cornerPermutationIndex,
+                sliceArrangementIndex,
+                edgeGroupAPositionIndex,
+                edgeGroupAPermutationIndex,
+                edgeGroupAOrientationIndex,
+                edgeGroupBPermutationIndex,
+                1,
+                firstMoveId);
+        }
+
         private static void SearchCoordinateCandidatesCore(
             CubeStateData startState,
             int maxDepth,
@@ -182,6 +388,7 @@ namespace Assets.Scripts.Solver.Phases
             Phase2Heuristic.Prepare();
             CornerPDBHeuristics.Prepare();
             EdgeGroupPDBHeuristics.Prepare();
+            FullCubeHeuristic.Prepare();
 
             int startCornerOrientationIndex = Phase1Coordinate.GetCornerOrientationIndex(start);
             int startEdgeOrientationIndex = Phase1Coordinate.GetEdgeOrientationIndex(start);
@@ -444,6 +651,22 @@ namespace Assets.Scripts.Solver.Phases
                     return Infinity;
                 }
 
+                int remainingDepth = currentBestLength - 1 - depth;
+                if (remainingDepth <= MaxCornerEdgeLookupRemainingDepth)
+                {
+                    int cornerEdgeLowerBound =
+                        FullCubeHeuristic.EstimateCornerPermutationEdgeOrientationPrepared(
+                            cornerPermutationIndex,
+                            edgeOrientationIndex);
+                    LastCandidateSearchStats.CornerEdgeLookups++;
+
+                    if (depth + cornerEdgeLowerBound >= currentBestLength)
+                    {
+                        LastCandidateSearchStats.PrunedByCornerEdgeLowerBound++;
+                        return Infinity;
+                    }
+                }
+
                 int sourceEdgeGroupAPositionIndex = baseEdgeGroupAPositionIndex;
                 int edgeGroupAPositionIndex = baseEdgeGroupAPositionIndex;
                 int edgeGroupAPermutationIndex = baseEdgeGroupAPermutationIndex;
@@ -467,7 +690,6 @@ namespace Assets.Scripts.Solver.Phases
                             incomingMoveId);
                 }
 
-                int remainingDepth = currentBestLength - 1 - depth;
                 if (remainingDepth <= MaxEdgeGroupALookupRemainingDepth)
                 {
                     int edgeGroupALowerBound = EdgeGroupPDBHeuristics.EstimateGroupAPrepared(
@@ -653,6 +875,352 @@ namespace Assets.Scripts.Solver.Phases
             }
 
             return minNextBound;
+        }
+
+        private static bool SearchCoordinateCandidateAtFixedBound(
+            FixedCandidateSearchContext context,
+            int cornerOrientationIndex,
+            int edgeOrientationIndex,
+            int slicePositionIndex,
+            Phase1AxisCoordinateView baseFirstRotatedView,
+            Phase1AxisCoordinateView baseSecondRotatedView,
+            int baseCornerPermutationIndex,
+            int baseSliceArrangementIndex,
+            int baseEdgeGroupAPositionIndex,
+            int baseEdgeGroupAPermutationIndex,
+            int baseEdgeGroupAOrientationIndex,
+            int baseEdgeGroupBPermutationIndex,
+            int depth,
+            int incomingMoveId)
+        {
+            context.Stats.NodesVisited++;
+
+            if ((context.Stats.NodesVisited & 1023) == 0
+                && context.CancellationToken.IsCancellationRequested)
+            {
+                context.Stats.Cancelled = true;
+                return true;
+            }
+
+            int heuristic = Phase1Heuristic.EstimatePrepared(
+                cornerOrientationIndex,
+                edgeOrientationIndex,
+                slicePositionIndex);
+            int estimatedTotal = depth + heuristic;
+
+            if (estimatedTotal >= context.CurrentBestLength)
+            {
+                context.Stats.PrunedByCurrentBest++;
+                return false;
+            }
+
+            if (estimatedTotal > context.Bound)
+            {
+                return false;
+            }
+
+            Phase1AxisCoordinateView firstRotatedView = baseFirstRotatedView;
+            Phase1AxisCoordinateView secondRotatedView = baseSecondRotatedView;
+            if (context.AxisHeuristicMode != Phase1AxisHeuristicMode.SingleAxis)
+            {
+                if (incomingMoveId != MoveGenerator.NoMoveId)
+                {
+                    firstRotatedView = Phase1AxisCoordinate.MovePrepared(
+                        baseFirstRotatedView,
+                        Phase1AxisCoordinate.FirstRotatedAxisView,
+                        incomingMoveId);
+                    secondRotatedView = Phase1AxisCoordinate.MovePrepared(
+                        baseSecondRotatedView,
+                        Phase1AxisCoordinate.SecondRotatedAxisView,
+                        incomingMoveId);
+                }
+
+                context.Stats.TripleAxisLookups++;
+                int tripleAxisLowerBound = Phase1Heuristic.EstimateAcrossAxesPrepared(
+                    heuristic,
+                    firstRotatedView,
+                    secondRotatedView,
+                    context.AxisHeuristicMode
+                        == Phase1AxisHeuristicMode.TripleAxisWithEqualEstimateBonus);
+
+                if (depth + tripleAxisLowerBound >= context.CurrentBestLength)
+                {
+                    context.Stats.PrunedByTripleAxisLowerBound++;
+                    return false;
+                }
+            }
+
+            int cornerPermutationIndex = baseCornerPermutationIndex;
+            if (incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                cornerPermutationIndex =
+                    Phase1MoveTables.GetCornerPermutationAfterMovePrepared(
+                        baseCornerPermutationIndex,
+                        incomingMoveId);
+            }
+
+            int cornerLowerBound = CornerPDBHeuristics.EstimatePrepared(
+                cornerPermutationIndex,
+                cornerOrientationIndex);
+
+            if (depth + cornerLowerBound >= context.CurrentBestLength)
+            {
+                context.Stats.PrunedByCornerLowerBound++;
+                return false;
+            }
+
+            int remainingDepth = context.CurrentBestLength - 1 - depth;
+            if (remainingDepth <= MaxCornerEdgeLookupRemainingDepth)
+            {
+                int cornerEdgeLowerBound =
+                    FullCubeHeuristic.EstimateCornerPermutationEdgeOrientationPrepared(
+                        cornerPermutationIndex,
+                        edgeOrientationIndex);
+                context.Stats.CornerEdgeLookups++;
+
+                if (depth + cornerEdgeLowerBound >= context.CurrentBestLength)
+                {
+                    context.Stats.PrunedByCornerEdgeLowerBound++;
+                    return false;
+                }
+            }
+
+            int sourceEdgeGroupAPositionIndex = baseEdgeGroupAPositionIndex;
+            int edgeGroupAPositionIndex = baseEdgeGroupAPositionIndex;
+            int edgeGroupAPermutationIndex = baseEdgeGroupAPermutationIndex;
+            int edgeGroupAOrientationIndex = baseEdgeGroupAOrientationIndex;
+
+            if (incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                edgeGroupAPermutationIndex =
+                    Phase1MoveTables.GetEdgeGroupPermutationAfterMovePrepared(
+                        baseEdgeGroupAPositionIndex,
+                        baseEdgeGroupAPermutationIndex,
+                        incomingMoveId);
+                edgeGroupAOrientationIndex =
+                    Phase1MoveTables.GetEdgeGroupOrientationAfterMovePrepared(
+                        baseEdgeGroupAPositionIndex,
+                        baseEdgeGroupAOrientationIndex,
+                        incomingMoveId);
+                edgeGroupAPositionIndex =
+                    Phase1MoveTables.GetEdgeGroupPositionAfterMovePrepared(
+                        baseEdgeGroupAPositionIndex,
+                        incomingMoveId);
+            }
+
+            if (remainingDepth <= MaxEdgeGroupALookupRemainingDepth)
+            {
+                int edgeGroupALowerBound = EdgeGroupPDBHeuristics.EstimateGroupAPrepared(
+                    edgeGroupAPositionIndex,
+                    edgeGroupAPermutationIndex,
+                    edgeGroupAOrientationIndex);
+                context.Stats.EdgeGroupALookups++;
+
+                if (depth + edgeGroupALowerBound >= context.CurrentBestLength)
+                {
+                    context.Stats.PrunedByEdgeGroupALowerBound++;
+                    return false;
+                }
+            }
+
+            int edgeGroupBPermutationIndex = baseEdgeGroupBPermutationIndex;
+            if (incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                int sourceEdgeGroupBPositionIndex =
+                    Phase1MoveTables.GetComplementaryEdgeGroupPositionPrepared(
+                        sourceEdgeGroupAPositionIndex);
+                edgeGroupBPermutationIndex =
+                    Phase1MoveTables.GetEdgeGroupPermutationAfterMovePrepared(
+                        sourceEdgeGroupBPositionIndex,
+                        baseEdgeGroupBPermutationIndex,
+                        incomingMoveId);
+            }
+
+            if (remainingDepth <= MaxEdgeGroupBLookupRemainingDepth)
+            {
+                int edgeGroupBPositionIndex =
+                    Phase1MoveTables.GetComplementaryEdgeGroupPositionPrepared(
+                        edgeGroupAPositionIndex);
+                int edgeGroupBOrientationIndex =
+                    Phase1MoveTables.GetEdgeGroupOrientationFromFullOrientationPrepared(
+                        edgeOrientationIndex,
+                        edgeGroupBPositionIndex);
+                int edgeGroupBLowerBound = EdgeGroupPDBHeuristics.EstimateGroupBPrepared(
+                    edgeGroupBPositionIndex,
+                    edgeGroupBPermutationIndex,
+                    edgeGroupBOrientationIndex);
+                context.Stats.EdgeGroupBLookups++;
+
+                if (depth + edgeGroupBLowerBound >= context.CurrentBestLength)
+                {
+                    context.Stats.PrunedByEdgeGroupBLowerBound++;
+                    return false;
+                }
+            }
+
+            bool isPhase1Goal = IsPhase1CoordinateGoal(
+                cornerOrientationIndex,
+                edgeOrientationIndex,
+                slicePositionIndex);
+            int sliceArrangementIndex = baseSliceArrangementIndex;
+
+            if (isPhase1Goal && incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                sliceArrangementIndex =
+                    Phase1MoveTables.GetSliceArrangementAfterMovePrepared(
+                        baseSliceArrangementIndex,
+                        incomingMoveId);
+            }
+
+            if (isPhase1Goal)
+            {
+                context.Stats.GoalsReached++;
+                int slicePermutationIndex =
+                    Phase1Coordinate.GetSlicePermutationIndexFromArrangement(sliceArrangementIndex);
+                int phase2CornerSliceLowerBound =
+                    Phase2Heuristic.EstimateCornerSlicePermutationPrepared(
+                        cornerPermutationIndex,
+                        slicePermutationIndex);
+
+                if (phase2CornerSliceLowerBound > remainingDepth)
+                {
+                    context.Stats.RejectedByPhase2CornerSlice++;
+                }
+                else
+                {
+                    context.Stats.CandidatesRebuilt++;
+                    Phase1Candidate candidate = CreateCandidateFromPath(
+                        context.StartState,
+                        context.PathMoveIds,
+                        depth);
+
+                    if (context.OnCandidateFound(candidate))
+                    {
+                        context.Stats.StoppedEarly = true;
+                        return true;
+                    }
+                }
+            }
+
+            if (depth == context.Bound)
+            {
+                return false;
+            }
+
+            if (!isPhase1Goal && incomingMoveId != MoveGenerator.NoMoveId)
+            {
+                sliceArrangementIndex =
+                    Phase1MoveTables.GetSliceArrangementAfterMovePrepared(
+                        baseSliceArrangementIndex,
+                        incomingMoveId);
+            }
+
+            int[] validMoveIds = MoveGenerator.GetValidMoveIds(incomingMoveId);
+
+            for (int i = 0; i < validMoveIds.Length; i++)
+            {
+                int moveId = validMoveIds[i];
+                int nextCornerOrientationIndex =
+                    Phase1MoveTables.GetCornerOrientationAfterMovePrepared(
+                        cornerOrientationIndex,
+                        moveId);
+                int nextEdgeOrientationIndex =
+                    Phase1MoveTables.GetEdgeOrientationAfterMovePrepared(
+                        edgeOrientationIndex,
+                        moveId);
+                int nextSlicePositionIndex =
+                    Phase1MoveTables.GetSlicePositionAfterMovePrepared(
+                        slicePositionIndex,
+                        moveId);
+                context.PathMoveIds[depth] = moveId;
+
+                if (SearchCoordinateCandidateAtFixedBound(
+                    context,
+                    nextCornerOrientationIndex,
+                    nextEdgeOrientationIndex,
+                    nextSlicePositionIndex,
+                    firstRotatedView,
+                    secondRotatedView,
+                    cornerPermutationIndex,
+                    sliceArrangementIndex,
+                    edgeGroupAPositionIndex,
+                    edgeGroupAPermutationIndex,
+                    edgeGroupAOrientationIndex,
+                    edgeGroupBPermutationIndex,
+                    depth + 1,
+                    moveId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        internal static bool SearchCoordinateRootOnlyAtBoundPrepared(
+            SolverStateData start,
+            int currentBestLength,
+            Phase1AxisHeuristicMode axisHeuristicMode,
+            Func<Phase1Candidate, bool> onCandidateFound,
+            out Phase1CandidateSearchStats stats)
+        {
+            if (onCandidateFound == null)
+            {
+                throw new ArgumentNullException(nameof(onCandidateFound));
+            }
+
+            stats = new Phase1CandidateSearchStats();
+            FixedCandidateSearchContext context = new FixedCandidateSearchContext
+            {
+                StartState = start,
+                Bound = 0,
+                CurrentBestLength = currentBestLength,
+                PathMoveIds = new int[0],
+                OnCandidateFound = onCandidateFound,
+                Stats = stats,
+                CancellationToken = CancellationToken.None,
+                AxisHeuristicMode = axisHeuristicMode
+            };
+
+            int cornerOrientationIndex = Phase1Coordinate.GetCornerOrientationIndex(start);
+            int edgeOrientationIndex = Phase1Coordinate.GetEdgeOrientationIndex(start);
+            int slicePositionIndex = Phase1Coordinate.GetSlicePositionIndex(start);
+            Phase1AxisCoordinateView firstRotatedView = Phase1AxisCoordinate.CreateView(
+                start,
+                Phase1AxisCoordinate.FirstRotatedAxisView);
+            Phase1AxisCoordinateView secondRotatedView = Phase1AxisCoordinate.CreateView(
+                start,
+                Phase1AxisCoordinate.SecondRotatedAxisView);
+            int cornerPermutationIndex = Phase2Coordinate.GetCornerPermutationIndex(start);
+            int sliceArrangementIndex = Phase1Coordinate.GetSliceArrangementIndex(start);
+            int edgeGroupAIndex = EdgeGroupPDBHeuristics.GetGroupAIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                edgeGroupAIndex,
+                out int edgeGroupAPositionIndex,
+                out int edgeGroupAPermutationIndex,
+                out int edgeGroupAOrientationIndex);
+            int edgeGroupBIndex = EdgeGroupPDBHeuristics.GetGroupBIndex(start);
+            EdgeGroupCoordinate.SplitIndex(
+                edgeGroupBIndex,
+                out _,
+                out int edgeGroupBPermutationIndex,
+                out _);
+
+            return SearchCoordinateCandidateAtFixedBound(
+                context,
+                cornerOrientationIndex,
+                edgeOrientationIndex,
+                slicePositionIndex,
+                firstRotatedView,
+                secondRotatedView,
+                cornerPermutationIndex,
+                sliceArrangementIndex,
+                edgeGroupAPositionIndex,
+                edgeGroupAPermutationIndex,
+                edgeGroupAOrientationIndex,
+                edgeGroupBPermutationIndex,
+                0,
+                MoveGenerator.NoMoveId);
         }
 
         private static bool IsPhase1CoordinateGoal(
